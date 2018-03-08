@@ -1,0 +1,18 @@
+appId: io.opensphere
+productName: OpenSphere
+files:
+  - src/**/*.js
+  - from: ../opensphere/dist/opensphere
+    to: opensphere
+    filter:
+      - '**/*'
+mac:
+  category: public.app-category.utilities
+  target:
+    - zip
+    - dmg
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64

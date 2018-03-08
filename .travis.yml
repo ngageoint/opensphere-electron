@@ -1,0 +1,28 @@
+language: node_js
+cache:
+  yarn: true
+  directories:
+  - "node_modules"
+notifications:
+  email: false
+node_js:
+- stable
+os:
+- linux
+addons:
+  apt:
+    sources:
+    - key_url: "https://dl.yarnpkg.com/debian/pubkey.gpg"
+    - sourceline: "deb https://dl.yarnpkg.com/debian/ stable main"
+    packages:
+    - yarn
+install:
+- yarn config list
+- yarn
+script:
+- set -e
+- yarn run build
+- set +e
+branches:
+  except:
+  - "/^v\\d+\\.\\d+\\.\\d+$/"

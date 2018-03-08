@@ -1,0 +1,37 @@
+{
+  "name": "opensphere-electron",
+  "version": "1.0.0",
+  "description": "OpenSphere is a pluggable GIS web application that supports both 2D and 3D views.",
+  "productName": "OpenSphere",
+  "main": "src/main.js",
+  "scripts": {
+    "build": "npm run lint",
+    "lint": "eslint src/**/*.js",
+    "start": "electron .",
+    "create-installers": "electron-builder -mwl --x64",
+    "create-installer:linux": "electron-builder --linux --x64",
+    "create-installer:mac": "electron-builder --mac --x64",
+    "create-installer:win": "electron-builder --win --x64"
+  },
+  "repository": "https://github.com/ngageoint/opensphere-electron",
+  "keywords": [
+    "OpenSphere",
+    "Electron"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "electron-is-dev": "^0.3.0",
+    "electron-log": "^2.2.14",
+    "electron-updater": "^2.20.1"
+  },
+  "devDependencies": {
+    "electron": "^1.8.2",
+    "electron-builder": "^20.0.8",
+    "eslint": "^4.18.1",
+    "eslint-config-google": "^0.9.1"
+  },
+  "peerDepedencies": {
+    "opensphere": "^1.0.0",
+    "opensphere-config-electron": "^1.0.0"
+  }
+}
