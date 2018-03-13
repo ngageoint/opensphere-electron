@@ -12,6 +12,12 @@ Run OpenSphere in an Electron container.
 
 ## Creating Installers
 
+### Setup
+
+Prior to creating installers, please look at the [Multi Platform Build](https://www.electron.build/multi-platform-build) instructions for `electron-builder`. You may have to install additional dependencies on your system before it will work, particularly for cross-platform builds.
+
+### Node Scripts
+
 To generate installers for all supported operating systems and platforms, use `yarn run create-installers`. To generate OS-specific application installers for Linux, macOS, or Windows, run one of the following:
 
 - Linux: `yarn run create-installer:linux`
