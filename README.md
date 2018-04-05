@@ -80,3 +80,21 @@ In a Yarn workspace, Electron Builder will fail to resolve npm dependencies from
 On macOS, creating the Linux installer may fail with an error related to `appimagetool`. If this happens, try installing `glib` with Homebrew. This is [discussed here](https://github.com/electron-userland/electron-builder/issues/2204#issuecomment-336741074) and will hopefully be fixed in `electron-builder` at some point in the future.
 
 For now, install Homebrew and Xcode then run `brew install glib`.
+
+## Custom Mirrors and Caches
+
+### Mirror
+
+If you need to use a custom mirror for Electron resources, you can set a couple environment variables when creating installers. Electron composes the download URL with the following:
+
+```
+url = ELECTRON_MIRROR + ELECTRON_CUSTOM_DIR + '/' + ELECTRON_CUSTOM_FILENAME
+```
+
+### Cache
+
+You can also override the cache by putting required files in the following locations:
+
+- Linux: `$XDG_CACHE_HOME` or `~/.cache/electron/`
+- MacOS: `~/Library/Caches/electron/`
+- Windows: `$LOCALAPPDATA/electron/Cache` or `~/AppData/Local/electron/Cache/`
