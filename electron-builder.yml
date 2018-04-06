@@ -16,3 +16,9 @@ linux:
     - target: AppImage
       arch:
         - x64
+win:
+  target:
+    - nsis
+    - portable
+nsis:
+  oneClick: false
