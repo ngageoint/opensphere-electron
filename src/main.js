@@ -1,4 +1,4 @@
-const {app, dialog, BrowserWindow, Menu} = require('electron');
+const {app, dialog, shell, BrowserWindow, Menu} = require('electron');
 const {autoUpdater} = require('electron-updater');
 
 const path = require('path');
@@ -23,7 +23,7 @@ const osIndexPath = isDebug || !isDev ?
     path.join(osPath, 'dist', 'opensphere', 'index.html');
 
 // Main process configuration.
-let config;
+let settings = {};
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -35,20 +35,21 @@ let mainWindow;
  */
 const loadConfig = function() {
   try {
-    config = require('../config/settings.json');
+    settings = require('../config/settings.json');
   } catch (e) {
     // no settings
+    settings = {};
   }
 
-  if (config && config.appName) {
-    app.setName(config.appName);
+  if (settings.appName) {
+    app.setName(settings.appName);
   }
 };
 
 /**
  * Create the main application window.
  */
-const createWindow = function() {
+const createMainWindow = function() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1600,
@@ -91,7 +92,7 @@ app.on('ready', function() {
   Menu.setApplicationMenu(menu);
 
   // Launch OpenSphere.
-  createWindow();
+  createMainWindow();
 
   if (!isDev) {
     // Check for updates, in production only.
@@ -114,7 +115,7 @@ app.on('activate', function() {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (mainWindow === null) {
-    createWindow();
+    createMainWindow();
   }
 });
 
@@ -129,12 +130,19 @@ const onDownloadProgress = function(info) {
 };
 
 /**
- * Handle user selection from app update dialog.
+ * Handle update download selection.
  * @param {number} index The selected button index.
  */
 const onUpdateSelection = function(index) {
   if (index === 0) {
-    autoUpdater.downloadUpdate();
+    if (process.env.PORTABLE_EXECUTABLE_DIR) {
+      // Load the portable download page if configured. If not, the user shouldn't have been notified of an update.
+      if (settings.releaseUrl) {
+        shell.openExternal(settings.releaseUrl);
+      }
+    } else {
+      autoUpdater.downloadUpdate();
+    }
   }
 };
 
@@ -143,16 +151,17 @@ const onUpdateSelection = function(index) {
  * @param {UpdateInfo} info The update info.
  */
 const onUpdateAvailable = function(info) {
-  const message = 'A new version of ' + app.getName() + ' (' + info.version + ') is available. ' +
-      'Would you like to download it now?';
-
-  dialog.showMessageBox(mainWindow, {
-    type: 'info',
-    title: 'Update Available',
-    message: message,
-    buttons: ['Yes', 'No'],
-    defaultId: 0
-  }, onUpdateSelection);
+  // Prompt that a new version is available when using an installed app, or the release page is configured.
+  if (!process.env.PORTABLE_EXECUTABLE_DIR || (settings.releaseUrl)) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Update Available',
+      message: 'A new version of ' + app.getName() + ' (' + info.version + ') is available. ' +
+          'Would you like to download it now?',
+      buttons: ['Yes', 'No'],
+      defaultId: 0
+    }, onUpdateSelection);
+  }
 };
 
 /**
