@@ -1,6 +1,7 @@
 # Build Output #
 ################
 dist/
+docs/_build/
 
 # NPM/Yarn #
 ############

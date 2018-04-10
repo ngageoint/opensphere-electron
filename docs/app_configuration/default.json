@@ -1,0 +1,6 @@
+{
+  "electron": {
+    "appName": "My OpenSphere App",
+    "releaseUrl": "https://myopensphereapp.io/releases/"
+  }
+}

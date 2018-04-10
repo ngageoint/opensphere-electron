@@ -1,0 +1,12 @@
+appId: io.myopensphereapp
+productName: My OpenSphere App
+files:
+  - from: ../my-custom-electron-project
+    to: config
+    filter:
+      - 'default.json'
+  - src/**/*.js
+  - from: ../opensphere/dist/opensphere
+    to: opensphere
+    filter:
+      - '**/*'
