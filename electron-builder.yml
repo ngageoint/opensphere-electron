@@ -1,7 +1,7 @@
 appId: io.opensphere
 productName: OpenSphere
 files:
-  - config/settings.json
+  - config/**/*.json
   - src/**/*.js
   - from: ../opensphere/dist/opensphere
     to: opensphere

@@ -1,0 +1,6 @@
+{
+  "electron": {
+    "appName": "OpenSphere",
+    "releaseUrl": "https://github.com/ngageoint/opensphere-electron/releases"
+  }
+}

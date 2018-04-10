@@ -12,6 +12,14 @@ log.transports.file.level = 'debug';
 const isDev = require('electron-is-dev');
 const isDebug = isDev && process.argv.includes('--debug');
 
+// When running in production, update the location for app configuration.
+if (!isDev) {
+  process.env.NODE_CONFIG_DIR = path.join(process.resourcesPath, 'app.asar', 'config');
+}
+
+// Load app configuration.
+const config = require('config');
+
 // Determine the location of OpenSphere.
 const osPath = isDev ?
     path.resolve('..', 'opensphere') :
@@ -22,27 +30,20 @@ const osIndexPath = isDebug || !isDev ?
     path.join(osPath, 'index.html') :
     path.join(osPath, 'dist', 'opensphere', 'index.html');
 
-// Main process configuration.
-let settings = {};
-
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
 
 /**
- * Try to load settings for the main process. Keys supported:
- *  - appName: Override the application name returned by app.getName()
+ * Load config for the main process. Keys supported:
+ *  - electron.appName: Override the application name returned by app.getName()
  */
 const loadConfig = function() {
-  try {
-    settings = require('../config/settings.json');
-  } catch (e) {
-    // no settings
-    settings = {};
-  }
-
-  if (settings.appName) {
-    app.setName(settings.appName);
+  if (config.has('electron.appName')) {
+    const appName = config.get('electron.appName');
+    if (appName) {
+      app.setName(appName);
+    }
   }
 };
 
@@ -137,8 +138,11 @@ const onUpdateSelection = function(index) {
   if (index === 0) {
     if (process.env.PORTABLE_EXECUTABLE_DIR) {
       // Load the portable download page if configured. If not, the user shouldn't have been notified of an update.
-      if (settings.releaseUrl) {
-        shell.openExternal(settings.releaseUrl);
+      if (config.has('electron.releaseUrl')) {
+        const releaseUrl = config.get('electron.releaseUrl');
+        if (releaseUrl) {
+          shell.openExternal(releaseUrl);
+        }
       }
     } else {
       autoUpdater.downloadUpdate();
@@ -152,7 +156,7 @@ const onUpdateSelection = function(index) {
  */
 const onUpdateAvailable = function(info) {
   // Prompt that a new version is available when using an installed app, or the release page is configured.
-  if (!process.env.PORTABLE_EXECUTABLE_DIR || (settings.releaseUrl)) {
+  if (!process.env.PORTABLE_EXECUTABLE_DIR || config.has('electron.releaseUrl')) {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Available',
