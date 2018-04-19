@@ -14,7 +14,7 @@ const isDebug = isDev && process.argv.includes('--debug');
 
 // When running in production, update the location for app configuration.
 if (!isDev) {
-  process.env.NODE_CONFIG_DIR = path.join(process.resourcesPath, 'app.asar', 'config');
+  process.env.NODE_CONFIG_DIR = path.join(process.resourcesPath, 'config');
 }
 
 // Load app configuration.
@@ -65,6 +65,15 @@ const createMainWindow = function() {
     }
   });
 
+
+  // Delete X-Frame-Options header from XHR responses to avoid preventing URL's from displaying in an iframe.
+  mainWindow.webContents.session.webRequest.onHeadersReceived({}, function(details, callback) {
+    delete details.responseHeaders['x-frame-options'];
+    delete details.responseHeaders['X-Frame-Options'];
+
+    callback({cancel: false, responseHeaders: details.responseHeaders});
+  });
+
   // Load the app from the file system.
   mainWindow.loadURL(url.format({
     pathname: osIndexPath,
@@ -74,6 +83,9 @@ const createMainWindow = function() {
 
   // Emitted when the window is closed.
   mainWindow.on('closed', function() {
+    // Clean up listeners.
+    mainWindow.removeAllListeners();
+
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
