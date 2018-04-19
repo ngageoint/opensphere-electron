@@ -30,6 +30,13 @@ const osIndexPath = isDebug || !isDev ?
     path.join(osPath, 'index.html') :
     path.join(osPath, 'dist', 'opensphere', 'index.html');
 
+// XHR response headers that should be discarded.
+const discardedHeaders = [
+  'content-security-policy',
+  'x-frame-options',
+  'x-xss-protection'
+];
+
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
@@ -68,8 +75,12 @@ const createMainWindow = function() {
 
   // Delete X-Frame-Options header from XHR responses to avoid preventing URL's from displaying in an iframe.
   mainWindow.webContents.session.webRequest.onHeadersReceived({}, function(details, callback) {
-    delete details.responseHeaders['x-frame-options'];
-    delete details.responseHeaders['X-Frame-Options'];
+    const headers = Object.keys(details.responseHeaders);
+    headers.forEach(function(header) {
+      if (discardedHeaders.includes(header.toLowerCase())) {
+        delete details.responseHeaders[header];
+      }
+    });
 
     callback({cancel: false, responseHeaders: details.responseHeaders});
   });
