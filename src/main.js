@@ -3,6 +3,7 @@ const {autoUpdater} = require('electron-updater');
 
 const path = require('path');
 const url = require('url');
+const open = require('open');
 
 // Configure logger.
 const log = require('electron-log');
@@ -83,6 +84,20 @@ const createMainWindow = function() {
     });
 
     callback({cancel: false, responseHeaders: details.responseHeaders});
+  });
+
+  mainWindow.webContents.on('new-window', function(event, url) {
+    // Any path outside of the application should be opened in the system browser
+    // Reasons:
+    //   1. That's what the user expects
+    //   2. That's where all of their login sessions/cookies already are
+    //   3. We've purposely axed CORS and XSS security from Electron so that the
+    //      user isn't bothered by that nonsense in a desktop app. As soon as you
+    //      treat Electron as a generic browser, that tears a hole in everything.
+    if (!url.startsWith(osPath)) {
+      event.preventDefault();
+      open(url);
+    }
   });
 
   // Load the app from the file system.
