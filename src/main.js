@@ -86,7 +86,7 @@ const createMainWindow = function() {
     callback({cancel: false, responseHeaders: details.responseHeaders});
   });
 
-  mainWindow.webContents.on('new-window', function(event, url) {
+  mainWindow.webContents.on('new-window', function(event, url, frameName) {
     // Any path outside of the application should be opened in the system browser
     // Reasons:
     //   1. That's what the user expects
@@ -94,7 +94,7 @@ const createMainWindow = function() {
     //   3. We've purposely axed CORS and XSS security from Electron so that the
     //      user isn't bothered by that nonsense in a desktop app. As soon as you
     //      treat Electron as a generic browser, that tears a hole in everything.
-    if (!url.startsWith('file://' + osPath)) {
+    if (frameName !== 'os' && !url.startsWith('file://' + osPath)) {
       event.preventDefault();
       open(url);
     }
