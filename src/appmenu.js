@@ -1,6 +1,7 @@
 const {app, BrowserWindow} = require('electron');
+const isDev = require('electron-is-dev');
 
-let template = [{
+const editMenu = {
   label: 'Edit',
   submenu: [{
     label: 'Undo',
@@ -29,7 +30,9 @@ let template = [{
     accelerator: 'CmdOrCtrl+A',
     role: 'selectall'
   }]
-}, {
+};
+
+const viewMenu = {
   label: 'View',
   submenu: [{
     label: 'Reload',
@@ -57,7 +60,11 @@ let template = [{
         focusedWindow.setFullScreen(!focusedWindow.isFullScreen());
       }
     }
-  }, {
+  }]
+};
+
+if (isDev) {
+  viewMenu.submenu.push({
     label: 'Toggle Developer Tools',
     accelerator: (function() {
       return process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I';
@@ -67,8 +74,10 @@ let template = [{
         focusedWindow.toggleDevTools();
       }
     }
-  }]
-}, {
+  });
+}
+
+const windowMenu = {
   label: 'Window',
   role: 'window',
   submenu: [{
@@ -90,7 +99,9 @@ let template = [{
       app.emit('activate');
     }
   }]
-}];
+};
+
+let template = [editMenu, viewMenu, windowMenu];
 
 if (process.platform === 'darwin') {
   const name = app.getName();
