@@ -1,4 +1,4 @@
-const {app, dialog, shell, BrowserWindow, Menu} = require('electron');
+const {app, dialog, globalShortcut, shell, BrowserWindow, Menu} = require('electron');
 const {autoUpdater} = require('electron-updater');
 
 const path = require('path');
@@ -134,6 +134,15 @@ app.on('ready', function() {
   createMainWindow();
 
   if (!isDev) {
+    // Allow opening Dev Tools via shortcut.
+    const shortcut = process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I';
+    globalShortcut.register(shortcut, function() {
+      let focusedWindow = BrowserWindow.getFocusedWindow();
+      if (focusedWindow) {
+        focusedWindow.toggleDevTools();
+      }
+    });
+
     // Check for updates, in production only.
     autoUpdater.autoDownload = false;
     autoUpdater.logger = log;
