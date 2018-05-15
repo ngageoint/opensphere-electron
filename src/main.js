@@ -59,20 +59,30 @@ const loadConfig = function() {
  * Create the main application window.
  */
 const createMainWindow = function() {
+  // Default web preferences for the main browser window.
+  const webPreferences = {
+    // Don't throttle animations/timers when backgrounded.
+    backgroundThrottling: false,
+    // Use native window.open so external windows can access their parent.
+    nativeWindowOpen: true,
+    // Run the preload script before other scripts on the page.
+    preload: 'preload.js'
+  };
+
+  // Load additional preferences from config.
+  if (config.has('electron.webPreferences')) {
+    const configWebPreferences = config.get('electron.webPreferences');
+    if (configWebPreferences) {
+      Object.assign(webPreferences, configWebPreferences);
+    }
+  }
+
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1600,
     height: 900,
-    webPreferences: {
-      // Don't throttle animations/timers when backgrounded.
-      backgroundThrottling: false,
-      // Use native window.open so external windows can access their parent.
-      nativeWindowOpen: true,
-      // Disable CORS.
-      webSecurity: false
-    }
+    webPreferences: webPreferences
   });
-
 
   // Delete X-Frame-Options header from XHR responses to avoid preventing URL's from displaying in an iframe.
   mainWindow.webContents.session.webRequest.onHeadersReceived({}, function(details, callback) {
