@@ -177,6 +177,25 @@ app.on('activate', function() {
   }
 });
 
+app.on('web-contents-created', function(event, contents) {
+  contents.on('will-attach-webview', function(event, webPreferences, params) {
+    // Strip away preload scripts because they always have Node integration enabled
+    delete webPreferences.preload;
+    delete webPreferences.preloadURL;
+
+    // Disable Node.js integration
+    webPreferences.nodeIntegration = false;
+
+    // Enable web security
+    webPreferences.webSecurity = true;
+
+    // Verify URL being loaded is local to the app
+    if (!params.src.startsWith('file://' + osPath)) {
+      event.preventDefault();
+    }
+  });
+});
+
 /**
  * Handle update download progress event.
  * @param {DownloadProgress} info The download progress info.
