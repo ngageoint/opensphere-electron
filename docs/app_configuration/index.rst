@@ -30,4 +30,13 @@ The ``productName`` key will be used in creating the installer file names, and t
 
 The ``electron.appName`` key will be used to replace the value returned by ``app.getName()`` in Electron, and the ``electron.releaseUrl`` will be launched if users wish to update a portable Windows build. Non-portable (installed) applications can be updated automatically by configuring Electron Builder's `auto update`_.
 
+The ``webPreferences`` key modifies the object passed to the main `BrowserWindow`_, changing how the window is created/configured. In the example, the following defaults are changed:
+
+* ``webSecurity`` is disabled to allow access to sites that do not support CORS.
+* ``nodeIntegration`` is enabled to provide a full Node environment to the application.
+
+Both of these are discouraged by the `Electron security tutorial`_, so be sure you fully understand the implications before changing settings like these.
+
 .. _auto update: https://www.electron.build/auto-update
+.. _BrowserWindow: https://electronjs.org/docs/api/browser-window
+.. _Electron security tutorial: https://electronjs.org/docs/tutorial/security
