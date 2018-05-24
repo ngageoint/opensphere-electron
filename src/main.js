@@ -59,20 +59,30 @@ const loadConfig = function() {
  * Create the main application window.
  */
 const createMainWindow = function() {
+  // Default web preferences for the main browser window.
+  const webPreferences = {
+    // Don't throttle animations/timers when backgrounded.
+    backgroundThrottling: false,
+    // Use native window.open so external windows can access their parent.
+    nativeWindowOpen: true,
+    // Run the preload script before other scripts on the page.
+    preload: 'preload.js'
+  };
+
+  // Load additional preferences from config.
+  if (config.has('electron.webPreferences')) {
+    const configWebPreferences = config.get('electron.webPreferences');
+    if (configWebPreferences) {
+      Object.assign(webPreferences, configWebPreferences);
+    }
+  }
+
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1600,
     height: 900,
-    webPreferences: {
-      // Don't throttle animations/timers when backgrounded.
-      backgroundThrottling: false,
-      // Use native window.open so external windows can access their parent.
-      nativeWindowOpen: true,
-      // Disable CORS.
-      webSecurity: false
-    }
+    webPreferences: webPreferences
   });
-
 
   // Delete X-Frame-Options header from XHR responses to avoid preventing URL's from displaying in an iframe.
   mainWindow.webContents.session.webRequest.onHeadersReceived({}, function(details, callback) {
@@ -165,6 +175,25 @@ app.on('activate', function() {
   if (mainWindow === null) {
     createMainWindow();
   }
+});
+
+app.on('web-contents-created', function(event, contents) {
+  contents.on('will-attach-webview', function(event, webPreferences, params) {
+    // Strip away preload scripts because they always have Node integration enabled
+    delete webPreferences.preload;
+    delete webPreferences.preloadURL;
+
+    // Disable Node.js integration
+    webPreferences.nodeIntegration = false;
+
+    // Enable web security
+    webPreferences.webSecurity = true;
+
+    // Verify URL being loaded is local to the app
+    if (!params.src.startsWith('file://' + osPath)) {
+      event.preventDefault();
+    }
+  });
 });
 
 /**

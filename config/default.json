@@ -1,6 +1,21 @@
 {
   "electron": {
     "appName": "OpenSphere",
-    "releaseUrl": "https://github.com/ngageoint/opensphere-electron/releases"
+    "releaseUrl": "https://github.com/ngageoint/opensphere-electron/releases",
+    "webPreferences": {
+      //
+      // Enable web security to enforce CORS and prevent execution of insecure code.
+      //
+      // https://electronjs.org/docs/tutorial/security#2-disable-nodejs-integration-for-remote-content
+      //
+      "webSecurity": true,
+      //
+      // Disable node integration to prevent XSS attacks from having access to it.
+      // If needed, introduce minimal interfaces through a preload script.
+      //
+      // https://electronjs.org/docs/tutorial/security#2-disable-nodejs-integration-for-remote-content
+      //
+      "nodeIntegration": false
+    }
   }
 }
