@@ -29,8 +29,8 @@
     "open": "^0.0.5"
   },
   "devDependencies": {
-    "electron": "2.0.0",
-    "electron-builder": "20.13.1",
+    "electron": "2.0.4",
+    "electron-builder": "20.19.2",
     "eslint": "^4.18.1",
     "eslint-config-google": "^0.9.1"
   },
