@@ -104,7 +104,7 @@ const createMainWindow = function() {
     //   3. We've purposely axed CORS and XSS security from Electron so that the
     //      user isn't bothered by that nonsense in a desktop app. As soon as you
     //      treat Electron as a generic browser, that tears a hole in everything.
-    if (frameName !== 'os' && !url.startsWith('file://' + osPath)) {
+    if (frameName !== 'os' && !decodeURIComponent(url).startsWith('file://' + osPath)) {
       event.preventDefault();
       open(url);
     }
