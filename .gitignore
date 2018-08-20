@@ -10,6 +10,12 @@ package-lock.json
 yarn-error.log
 yarn.lock
 
+app/node_modules
+app/package-lock.json
+app/yarn-error.log
+app/yarn.lock
+app/package.json
+
 # OS generated files #
 ######################
 .DS_Store

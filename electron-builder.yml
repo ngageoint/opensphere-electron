@@ -2,8 +2,12 @@ appId: io.opensphere
 productName: OpenSphere
 files:
   - src/**/*.js
-  - from: ../opensphere/dist/opensphere
+  - from: ../../opensphere/dist/opensphere
     to: opensphere
+    filter:
+      - '**/*'
+  - from: ../../opensphere/dist/opensphere/config
+    to: opensphere/config
     filter:
       - '**/*'
 extraResources:
