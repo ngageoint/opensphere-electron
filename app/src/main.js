@@ -119,16 +119,16 @@ const createMainWindow = function() {
     slashes: true
   });
 
-  console.log('loading', appUrl);
+  log.info('loading', appUrl);
   mainWindow.loadURL(appUrl);
 
 
   mainWindow.on('crashed', function() {
-    console.log('Main window crashed');
+    log.error('Main window crashed');
   });
 
   mainWindow.on('destroyed', function() {
-    console.log('Main window destroyed');
+    log.error('Main window destroyed');
   });
 
   // Emitted when the window is closed.
@@ -193,18 +193,12 @@ app.on('activate', function() {
 
 app.on('web-contents-created', function(event, contents) {
   contents.on('will-attach-webview', function(event, webPreferences, params) {
-    // Removing nodeIntegration breaks any plugin making use of native node bindings
-    // (those crash when used in Web Workers within Electron). As a workaround, we
-    // now use node's process.fork() to launch the worker as a node child process
-    // instead, and write the worker in such a way that it can handle being run
-    // in that manner in addition to the typical Web Worker path on the web.
-
     // Strip away preload scripts because they always have Node integration enabled
-    // delete webPreferences.preload;
-    // delete webPreferences.preloadURL;
+    delete webPreferences.preload;
+    delete webPreferences.preloadURL;
 
     // Disable Node.js integration
-    // webPreferences.nodeIntegration = false;
+    webPreferences.nodeIntegration = false;
 
     // Enable web security
     webPreferences.webSecurity = true;
