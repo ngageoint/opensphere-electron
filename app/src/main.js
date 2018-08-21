@@ -13,8 +13,10 @@ log.transports.file.level = 'debug';
 const isDev = require('electron-is-dev');
 const isDebug = isDev && process.argv.includes('--debug');
 
-// When running in production, update the location for app configuration.
-if (!isDev) {
+if (isDev) {
+  process.env.ELECTRON_IS_DEV = isDev;
+} else {
+  // When running in production, update the location for app configuration.
   process.env.NODE_CONFIG_DIR = path.join(process.resourcesPath, 'config');
 }
 
@@ -111,11 +113,23 @@ const createMainWindow = function() {
   });
 
   // Load the app from the file system.
-  mainWindow.loadURL(url.format({
+  const appUrl = url.format({
     pathname: osIndexPath,
     protocol: 'file:',
     slashes: true
-  }));
+  });
+
+  log.info('loading', appUrl);
+  mainWindow.loadURL(appUrl);
+
+
+  mainWindow.on('crashed', function() {
+    log.error('Main window crashed');
+  });
+
+  mainWindow.on('destroyed', function() {
+    log.error('Main window destroyed');
+  });
 
   // Emitted when the window is closed.
   mainWindow.on('closed', function() {
