@@ -68,7 +68,7 @@ const createMainWindow = function() {
     // Use native window.open so external windows can access their parent.
     nativeWindowOpen: true,
     // Run the preload script before other scripts on the page.
-    preload: 'preload.js'
+    preload: path.join(__dirname, 'preload.js')
   };
 
   // Load additional preferences from config.
