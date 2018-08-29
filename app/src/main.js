@@ -15,6 +15,10 @@ const isDebug = isDev && process.argv.includes('--debug');
 
 if (isDev) {
   process.env.ELECTRON_IS_DEV = isDev;
+
+  // this allows scripts to add this to module.paths if they want to pick up
+  // native deps built for electron out of opensphere-electron/app/node_modules
+  process.env.ELECTRON_EXTRA_PATH = module.paths[1];
 } else {
   // When running in production, update the location for app configuration.
   process.env.NODE_CONFIG_DIR = path.join(process.resourcesPath, 'config');
