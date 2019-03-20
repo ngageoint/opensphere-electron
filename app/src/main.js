@@ -10,11 +10,10 @@ const log = require('electron-log');
 log.transports.file.level = 'debug';
 
 // Determine which environment we're running in.
-const isDev = require('electron-is-dev');
-const isDebug = isDev && process.argv.includes('--debug');
+const isDebug = !app.isPackaged && process.argv.includes('--debug');
 
-if (isDev) {
-  process.env.ELECTRON_IS_DEV = isDev;
+if (!app.isPackaged) {
+  process.env.ELECTRON_IS_DEV = !app.isPackaged;
 
   // this allows scripts to add this to module.paths if they want to pick up
   // native deps built for electron out of opensphere-electron/app/node_modules
@@ -28,12 +27,12 @@ if (isDev) {
 const config = require('config');
 
 // Determine the location of OpenSphere.
-const osPath = isDev ?
+const osPath = !app.isPackaged ?
     path.resolve('..', 'opensphere') :
     path.join(process.resourcesPath, 'app.asar', 'opensphere');
 
 // Determine the location of OpenSphere's index.html.
-const osIndexPath = isDebug || !isDev ?
+const osIndexPath = isDebug || !!app.isPackaged ?
     path.join(osPath, 'index.html') :
     path.join(osPath, 'dist', 'opensphere', 'index.html');
 
@@ -161,7 +160,7 @@ app.on('ready', function() {
   // Launch OpenSphere.
   createMainWindow();
 
-  if (!isDev) {
+  if (!!app.isPackaged) {
     // Allow opening Dev Tools via shortcut.
     const shortcut = process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I';
     globalShortcut.register(shortcut, function() {

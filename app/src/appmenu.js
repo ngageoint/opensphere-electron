@@ -1,5 +1,4 @@
 const {app, BrowserWindow} = require('electron');
-const isDev = require('electron-is-dev');
 
 const editMenu = {
   label: 'Edit',
@@ -63,7 +62,7 @@ const viewMenu = {
   }]
 };
 
-if (isDev) {
+if (!app.isPackaged) {
   viewMenu.submenu.push({
     label: 'Toggle Developer Tools',
     accelerator: (function() {
