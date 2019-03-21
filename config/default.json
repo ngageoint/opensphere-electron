@@ -15,15 +15,8 @@
       //
       // https://electronjs.org/docs/tutorial/security#2-disable-nodejs-integration-for-remote-content
       //
-      // Removing nodeIntegration breaks any plugin making use of native node bindings
-      // (those crash when used in Web Workers within Electron). As a workaround, we
-      // now use node's process.fork() to launch the worker as a node child process
-      // instead, and write the worker in such a way that it can handle being run
-      // in that manner in addition to the typical Web Worker path on the web.
-      //
-      // This can be swapped back for security if Electron fixes the crashing issue,
-      // but code changes will still need to be made to those plugins as well.
-      "nodeIntegration": true
+      "nodeIntegration": false,
+      "nodeIntegrationInWorker": false
     }
   }
 }
