@@ -28,14 +28,25 @@ if (isDev) {
 const config = require('config');
 
 // Determine the location of OpenSphere.
-const osPath = isDev ?
-    path.resolve('..', 'opensphere') :
-    path.join(process.resourcesPath, 'app.asar', 'opensphere');
+let osPath;
+if (isDev) {
+  // Development (command line) path
+  osPath = path.resolve('..', 'opensphere');
+
+  if (!isDebug) {
+    // Compiled app
+    osPath = path.resolve(osPath, 'dist', 'opensphere');
+  }
+} else {
+  // Production path
+  osPath = path.join(process.resourcesPath, 'app.asar', 'opensphere');
+}
+
+// Export the path for application use.
+process.env.OPENSPHERE_PATH = osPath;
 
 // Determine the location of OpenSphere's index.html.
-const osIndexPath = isDebug || !isDev ?
-    path.join(osPath, 'index.html') :
-    path.join(osPath, 'dist', 'opensphere', 'index.html');
+const osIndexPath = path.join(osPath, 'index.html');
 
 // XHR response headers that should be discarded.
 const discardedHeaders = [
