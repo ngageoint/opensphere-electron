@@ -15,6 +15,7 @@ app/package-lock.json
 app/yarn-error.log
 app/yarn.lock
 app/package.json
+app/src/preload
 
 # OS generated files #
 ######################

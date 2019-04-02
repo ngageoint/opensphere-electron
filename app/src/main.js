@@ -1,6 +1,7 @@
 const {app, dialog, globalShortcut, shell, BrowserWindow, Menu} = require('electron');
 const {autoUpdater} = require('electron-updater');
 
+const fs = require('fs');
 const path = require('path');
 const url = require('url');
 const open = require('open');
@@ -28,14 +29,28 @@ if (isDev) {
 const config = require('config');
 
 // Determine the location of OpenSphere.
-const osPath = isDev ?
-    path.resolve('..', 'opensphere') :
-    path.join(process.resourcesPath, 'app.asar', 'opensphere');
+let osPath;
+if (isDev) {
+  // Development (command line) path
+  osPath = path.resolve('..', 'opensphere');
+
+  if (!isDebug) {
+    // Compiled app
+    osPath = path.resolve(osPath, 'dist', 'opensphere');
+  }
+} else {
+  // Production path
+  osPath = path.join(process.resourcesPath, 'app.asar', 'opensphere');
+}
+
+// Export the path for application use.
+process.env.OPENSPHERE_PATH = osPath;
 
 // Determine the location of OpenSphere's index.html.
-const osIndexPath = isDebug || !isDev ?
-    path.join(osPath, 'index.html') :
-    path.join(osPath, 'dist', 'opensphere', 'index.html');
+const osIndexPath = path.join(osPath, 'index.html');
+
+// Location of preload scripts.
+const preloadDir = path.join(__dirname, 'preload');
 
 // XHR response headers that should be discarded.
 const discardedHeaders = [
@@ -59,6 +74,15 @@ const loadConfig = function() {
       app.setName(appName);
     }
   }
+};
+
+/**
+ * Get the absolute path for a preload script.
+ * @param {string} script The script.
+ * @return {string} The absolute path.
+ */
+const getPreloadPath = function(script) {
+  return path.join(preloadDir, script);
 };
 
 /**
@@ -89,6 +113,12 @@ const createMainWindow = function() {
     height: 900,
     webPreferences: webPreferences
   });
+
+  // Load external preload scripts into the session.
+  if (fs.existsSync(preloadDir)) {
+    const preloads = fs.readdirSync(preloadDir);
+    mainWindow.webContents.session.setPreloads(preloads.map(getPreloadPath));
+  }
 
   // Delete X-Frame-Options header from XHR responses to avoid preventing URL's from displaying in an iframe.
   mainWindow.webContents.session.webRequest.onHeadersReceived({}, function(details, callback) {

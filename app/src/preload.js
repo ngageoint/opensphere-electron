@@ -1,2 +1,4 @@
+const {webFrame} = require('electron');
+
 // allow the file:// protocol to be used by the fetch API
-require('electron').webFrame.registerURLSchemeAsPrivileged('file');
+webFrame.registerURLSchemeAsPrivileged('file');
