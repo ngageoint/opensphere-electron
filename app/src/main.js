@@ -1,4 +1,4 @@
-const {app, dialog, globalShortcut, shell, BrowserWindow, Menu} = require('electron');
+const {app, dialog, globalShortcut, protocol, shell, BrowserWindow, Menu} = require('electron');
 const {autoUpdater} = require('electron-updater');
 
 const fs = require('fs');
@@ -9,6 +9,11 @@ const open = require('open');
 // Configure logger.
 const log = require('electron-log');
 log.transports.file.level = 'debug';
+
+// Allow the file:// protocol to be used by the fetch API.
+protocol.registerSchemesAsPrivileged([
+  {scheme: 'file', privileges: {supportFetchAPI: true}}
+]);
 
 // Determine which environment we're running in.
 const isDev = require('electron-is-dev');
@@ -94,9 +99,7 @@ const createMainWindow = function() {
     // Don't throttle animations/timers when backgrounded.
     backgroundThrottling: false,
     // Use native window.open so external windows can access their parent.
-    nativeWindowOpen: true,
-    // Run the preload script before other scripts on the page.
-    preload: path.join(__dirname, 'preload.js')
+    nativeWindowOpen: true
   };
 
   // Load additional preferences from config.
