@@ -1,4 +1,4 @@
-const {app, dialog, globalShortcut, shell, BrowserWindow, Menu} = require('electron');
+const {app, dialog, globalShortcut, protocol, shell, BrowserWindow, Menu} = require('electron');
 const {autoUpdater} = require('electron-updater');
 
 const fs = require('fs');
@@ -9,6 +9,11 @@ const open = require('open');
 // Configure logger.
 const log = require('electron-log');
 log.transports.file.level = 'debug';
+
+// Allow the file:// protocol to be used by the fetch API.
+protocol.registerSchemesAsPrivileged([
+  {scheme: 'file', privileges: {supportFetchAPI: true}}
+]);
 
 // Determine which environment we're running in.
 const isDev = require('electron-is-dev');
@@ -27,27 +32,57 @@ if (isDev) {
 
 // Load app configuration.
 const config = require('config');
+const basePath = isDev ? path.resolve('..') : path.join(process.resourcesPath, 'app.asar');
 
-// Determine the location of OpenSphere.
-let osPath;
-if (isDev) {
-  // Development (command line) path
-  osPath = path.resolve('..', 'opensphere');
+/**
+ * Get the path for an application.
+ * @param {string} appName The application name.
+ * @param {string} basePath The base application path.
+ * @return {string} The application path.
+ */
+const getAppPath = function(appName, basePath) {
+  let appPath;
 
-  if (!isDebug) {
-    // Compiled app
-    osPath = path.resolve(osPath, 'dist', 'opensphere');
+  const configKey = `electron.apps.${appName}`;
+  const appConfig = config.has(configKey) ? config.get(configKey) : {};
+  const baseAppPath = appConfig.path || appName;
+
+  if (isDev) {
+    // Development (command line) path
+    appPath = path.resolve(basePath, baseAppPath);
+
+    if (!isDebug) {
+      // Compiled app
+      appPath = path.resolve(appPath, 'dist', baseAppPath);
+    }
+  } else {
+    // Production path
+    appPath = path.join(basePath, baseAppPath);
   }
-} else {
-  // Production path
-  osPath = path.join(process.resourcesPath, 'app.asar', 'opensphere');
-}
+
+  return appPath;
+};
+
+/**
+ * Get the URL to load an application.
+ * @param {string} appName The application name.
+ * @param {string} baseUrl The base application URL.
+ * @return {string} The application URL.
+ */
+const getAppUrl = function(appName, baseUrl) {
+  const appPath = getAppPath(appName, baseUrl);
+  return url.format({
+    pathname: path.join(appPath, 'index.html'),
+    protocol: 'file:',
+    slashes: true
+  });
+};
+
+// Determine the location of the application.
+const baseApp = config.has('electron.baseApp') ? config.get('electron.baseApp') : 'opensphere';
 
 // Export the path for application use.
-process.env.OPENSPHERE_PATH = osPath;
-
-// Determine the location of OpenSphere's index.html.
-const osIndexPath = path.join(osPath, 'index.html');
+process.env.OPENSPHERE_PATH = getAppPath(baseApp, basePath);
 
 // Location of preload scripts.
 const preloadDir = path.join(__dirname, 'preload');
@@ -86,6 +121,85 @@ const getPreloadPath = function(script) {
 };
 
 /**
+ * Create a new browser window.
+ * @param {Electron.WebPreferences} webPreferences The Electron web preferences.
+ * @param {Electron.BrowserWindow} parentWindow The opening browser window.
+ * @return {Electron.BrowserWindow}
+ */
+const createBrowserWindow = function(webPreferences, parentWindow) {
+  // Create the browser window.
+  const parentBounds = parentWindow ? parentWindow.getBounds() : undefined;
+  const browserWindow = new BrowserWindow({
+    width: parentBounds ? parentBounds.width : 1600,
+    height: parentBounds ? parentBounds.height : 900,
+    x: parentBounds ? (parentBounds.x + 25) : undefined,
+    y: parentBounds ? (parentBounds.y + 25) : undefined,
+    webPreferences: webPreferences
+  });
+
+  // Load external preload scripts into the session.
+  if (fs.existsSync(preloadDir)) {
+    const preloads = fs.readdirSync(preloadDir);
+    browserWindow.webContents.session.setPreloads(preloads.map(getPreloadPath));
+  }
+
+  // Delete X-Frame-Options header from XHR responses to avoid preventing URL's from displaying in an iframe.
+  browserWindow.webContents.session.webRequest.onHeadersReceived({}, function(details, callback) {
+    const headers = Object.keys(details.responseHeaders);
+    headers.forEach(function(header) {
+      if (discardedHeaders.includes(header.toLowerCase())) {
+        delete details.responseHeaders[header];
+      }
+    });
+
+    callback({cancel: false, responseHeaders: details.responseHeaders});
+  });
+
+  browserWindow.webContents.on('new-window', function(event, url, frameName) {
+    // Any path outside of the application should be opened in the system browser
+    // Reasons:
+    //   1. That's what the user expects
+    //   2. That's where all of their login sessions/cookies already are
+    //   3. We've purposely axed CORS and XSS security from Electron so that the
+    //      user isn't bothered by that nonsense in a desktop app. As soon as you
+    //      treat Electron as a generic browser, that tears a hole in everything.
+    if (frameName !== 'os' && !decodeURIComponent(url).startsWith('file://' + basePath)) {
+      event.preventDefault();
+      open(url);
+    } else if (url.indexOf('.html') == -1 && config.has('electron.apps')) {
+      // If the HTML file isn't specified in an internal URL, check if a matching app is configured.
+      const apps = config.get('electron.apps');
+      for (let appName in apps) {
+        if (url.indexOf(appName) != -1) {
+          // Launch the matched app.
+          event.preventDefault();
+          createAppWindow(appName, url, browserWindow);
+          break;
+        }
+      }
+    }
+  });
+
+  return browserWindow;
+};
+
+/**
+ * Open an application browser window.
+ * @param {string} appName The app name.
+ * @param {string} url The app URL.
+ * @param {Electron.BrowserWindow} parentWindow The opening browser window.
+ */
+const createAppWindow = function(appName, url, parentWindow) {
+  // Get the actual app URL, appended with any fragment/query string from the requested URL.
+  const appUrl = getAppUrl(appName, basePath) + url.replace(/^[^#?]+/, '');
+
+  if (parentWindow && parentWindow.webContents) {
+    const appWindow = createBrowserWindow(parentWindow.webContents.getWebPreferences(), parentWindow);
+    appWindow.loadURL(appUrl);
+  }
+};
+
+/**
  * Create the main application window.
  */
 const createMainWindow = function() {
@@ -94,9 +208,7 @@ const createMainWindow = function() {
     // Don't throttle animations/timers when backgrounded.
     backgroundThrottling: false,
     // Use native window.open so external windows can access their parent.
-    nativeWindowOpen: true,
-    // Run the preload script before other scripts on the page.
-    preload: path.join(__dirname, 'preload.js')
+    nativeWindowOpen: true
   };
 
   // Load additional preferences from config.
@@ -108,54 +220,13 @@ const createMainWindow = function() {
   }
 
   // Create the browser window.
-  mainWindow = new BrowserWindow({
-    width: 1600,
-    height: 900,
-    webPreferences: webPreferences
-  });
-
-  // Load external preload scripts into the session.
-  if (fs.existsSync(preloadDir)) {
-    const preloads = fs.readdirSync(preloadDir);
-    mainWindow.webContents.session.setPreloads(preloads.map(getPreloadPath));
-  }
-
-  // Delete X-Frame-Options header from XHR responses to avoid preventing URL's from displaying in an iframe.
-  mainWindow.webContents.session.webRequest.onHeadersReceived({}, function(details, callback) {
-    const headers = Object.keys(details.responseHeaders);
-    headers.forEach(function(header) {
-      if (discardedHeaders.includes(header.toLowerCase())) {
-        delete details.responseHeaders[header];
-      }
-    });
-
-    callback({cancel: false, responseHeaders: details.responseHeaders});
-  });
-
-  mainWindow.webContents.on('new-window', function(event, url, frameName) {
-    // Any path outside of the application should be opened in the system browser
-    // Reasons:
-    //   1. That's what the user expects
-    //   2. That's where all of their login sessions/cookies already are
-    //   3. We've purposely axed CORS and XSS security from Electron so that the
-    //      user isn't bothered by that nonsense in a desktop app. As soon as you
-    //      treat Electron as a generic browser, that tears a hole in everything.
-    if (frameName !== 'os' && !decodeURIComponent(url).startsWith('file://' + osPath)) {
-      event.preventDefault();
-      open(url);
-    }
-  });
+  mainWindow = createBrowserWindow(webPreferences);
 
   // Load the app from the file system.
-  const appUrl = url.format({
-    pathname: osIndexPath,
-    protocol: 'file:',
-    slashes: true
-  });
+  const appUrl = getAppUrl(baseApp, basePath);
 
   log.info('loading', appUrl);
   mainWindow.loadURL(appUrl);
-
 
   mainWindow.on('crashed', function() {
     log.error('Main window crashed');
@@ -188,7 +259,7 @@ app.on('ready', function() {
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
 
-  // Launch OpenSphere.
+  // Launch the application.
   createMainWindow();
 
   if (!isDev) {
@@ -238,7 +309,7 @@ app.on('web-contents-created', function(event, contents) {
     webPreferences.webSecurity = true;
 
     // Verify URL being loaded is local to the app
-    if (!params.src.startsWith('file://' + osPath)) {
+    if (!params.src.startsWith('file://' + basePath)) {
       event.preventDefault();
     }
   });
