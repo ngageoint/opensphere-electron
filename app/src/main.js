@@ -169,7 +169,7 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
     } else if (url.indexOf('.html') == -1 && config.has('electron.apps')) {
       // If the HTML file isn't specified in an internal URL, check if a matching app is configured.
       const apps = config.get('electron.apps');
-      for (let appName in apps) {
+      for (const appName in apps) {
         if (url.indexOf(appName) != -1) {
           // Launch the matched app.
           event.preventDefault();
@@ -266,7 +266,7 @@ app.on('ready', function() {
     // Allow opening Dev Tools via shortcut.
     const shortcut = process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I';
     globalShortcut.register(shortcut, function() {
-      let focusedWindow = BrowserWindow.getFocusedWindow();
+      const focusedWindow = BrowserWindow.getFocusedWindow();
       if (focusedWindow) {
         focusedWindow.toggleDevTools();
       }
