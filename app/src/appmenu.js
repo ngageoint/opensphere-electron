@@ -101,7 +101,7 @@ const windowMenu = {
   }]
 };
 
-let template = [editMenu, viewMenu, windowMenu];
+const template = [editMenu, viewMenu, windowMenu];
 
 if (process.platform === 'darwin') {
   const name = app.getName();
@@ -134,7 +134,7 @@ if (process.platform === 'darwin') {
     }]
   });
 
-  let windowMenu = template.find(function(item) {
+  const windowMenu = template.find(function(item) {
     return item.label === 'Window';
   });
 
