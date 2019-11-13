@@ -82,7 +82,7 @@ const getAppUrl = function(appName, baseUrl) {
 const baseApp = config.has('electron.baseApp') ? config.get('electron.baseApp') : 'opensphere';
 
 // Export the path for application use.
-process.env.OPENSPHERE_PATH = getAppPath(baseApp, basePath);
+process.env.OPENSPHERE_PATH = getAppPath('opensphere', basePath);
 
 // Location of preload scripts.
 const preloadDir = path.join(__dirname, 'preload');
