@@ -79,6 +79,24 @@ const getAppUrl = function(appName, baseUrl) {
   });
 };
 
+/**
+ * Get the app name from a URL.
+ * @param {string} url The URL.
+ * @return {?string} The app name, or null if not found.
+ */
+const getAppFromUrl = function(url) {
+  let matchedApp = null;
+  if (config.has('electron.apps')) {
+    const apps = config.get('electron.apps');
+    for (const appName in apps) {
+      if (url.indexOf(appName) != -1 && (!matchedApp || matchedApp.length < appName.length)) {
+        matchedApp = appName;
+      }
+    }
+  }
+  return matchedApp;
+};
+
 // Determine the location of the application.
 const baseApp = config.has('electron.baseApp') ? config.get('electron.baseApp') : 'opensphere';
 
@@ -168,16 +186,27 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
     if (frameName !== 'os' && !(decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(basePath)) > -1)) {
       event.preventDefault();
       open(url);
-    } else if (url.indexOf('.html') == -1 && config.has('electron.apps')) {
+    } else if (url.indexOf('.html') == -1) {
       // If the HTML file isn't specified in an internal URL, check if a matching app is configured.
-      const apps = config.get('electron.apps');
-      for (const appName in apps) {
-        if (url.indexOf(appName) != -1) {
-          // Launch the matched app.
-          event.preventDefault();
-          createAppWindow(appName, url, browserWindow);
-          break;
-        }
+      const appName = getAppFromUrl(url);
+      if (appName) {
+        // Launch the matched app.
+        event.preventDefault();
+        createAppWindow(appName, url, browserWindow);
+      }
+    }
+  });
+
+  browserWindow.webContents.on('will-navigate', function(event, url) {
+    // Internal navigation needs to detect when navigating to a configured app and get the correct URL for that app.
+    if (url.startsWith('file://') && url.indexOf(slash(basePath)) > -1) {
+      const appName = getAppFromUrl(url);
+      if (appName) {
+        event.preventDefault();
+
+        // Get the actual app URL, appended with any fragment/query string from the requested URL.
+        const appUrl = getAppUrl(appName, basePath) + url.replace(/^[^#?]+/, '');
+        browserWindow.loadURL(appUrl);
       }
     }
   });
