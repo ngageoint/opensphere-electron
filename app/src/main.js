@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 const open = require('open');
+const slash = require('slash');
 
 // Configure logger.
 const log = require('electron-log');
@@ -163,7 +164,8 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
     //   3. We've purposely axed CORS and XSS security from Electron so that the
     //      user isn't bothered by that nonsense in a desktop app. As soon as you
     //      treat Electron as a generic browser, that tears a hole in everything.
-    if (frameName !== 'os' && !decodeURIComponent(url).startsWith('file://' + basePath)) {
+    const decodedUrl = decodeURIComponent(url);
+    if (frameName !== 'os' && !(decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(basePath)) > -1)) {
       event.preventDefault();
       open(url);
     } else if (url.indexOf('.html') == -1 && config.has('electron.apps')) {
