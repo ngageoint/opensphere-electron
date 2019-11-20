@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 const open = require('open');
+const slash = require('slash');
 
 // Configure logger.
 const log = require('electron-log');
@@ -78,11 +79,29 @@ const getAppUrl = function(appName, baseUrl) {
   });
 };
 
+/**
+ * Get the app name from a URL.
+ * @param {string} url The URL.
+ * @return {?string} The app name, or null if not found.
+ */
+const getAppFromUrl = function(url) {
+  let matchedApp = null;
+  if (config.has('electron.apps')) {
+    const apps = config.get('electron.apps');
+    for (const appName in apps) {
+      if (url.indexOf(appName) != -1 && (!matchedApp || matchedApp.length < appName.length)) {
+        matchedApp = appName;
+      }
+    }
+  }
+  return matchedApp;
+};
+
 // Determine the location of the application.
 const baseApp = config.has('electron.baseApp') ? config.get('electron.baseApp') : 'opensphere';
 
 // Export the path for application use.
-process.env.OPENSPHERE_PATH = getAppPath(baseApp, basePath);
+process.env.OPENSPHERE_PATH = getAppPath('opensphere', basePath);
 
 // Location of preload scripts.
 const preloadDir = path.join(__dirname, 'preload');
@@ -163,19 +182,31 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
     //   3. We've purposely axed CORS and XSS security from Electron so that the
     //      user isn't bothered by that nonsense in a desktop app. As soon as you
     //      treat Electron as a generic browser, that tears a hole in everything.
-    if (frameName !== 'os' && !decodeURIComponent(url).startsWith('file://' + basePath)) {
+    const decodedUrl = decodeURIComponent(url);
+    if (frameName !== 'os' && !(decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(basePath)) > -1)) {
       event.preventDefault();
       open(url);
-    } else if (url.indexOf('.html') == -1 && config.has('electron.apps')) {
+    } else if (url.indexOf('.html') == -1) {
       // If the HTML file isn't specified in an internal URL, check if a matching app is configured.
-      const apps = config.get('electron.apps');
-      for (const appName in apps) {
-        if (url.indexOf(appName) != -1) {
-          // Launch the matched app.
-          event.preventDefault();
-          createAppWindow(appName, url, browserWindow);
-          break;
-        }
+      const appName = getAppFromUrl(url);
+      if (appName) {
+        // Launch the matched app.
+        event.preventDefault();
+        createAppWindow(appName, url, browserWindow);
+      }
+    }
+  });
+
+  browserWindow.webContents.on('will-navigate', function(event, url) {
+    // Internal navigation needs to detect when navigating to a configured app and get the correct URL for that app.
+    if (url.startsWith('file://') && url.indexOf(slash(basePath)) > -1) {
+      const appName = getAppFromUrl(url);
+      if (appName) {
+        event.preventDefault();
+
+        // Get the actual app URL, appended with any fragment/query string from the requested URL.
+        const appUrl = getAppUrl(appName, basePath) + url.replace(/^[^#?]+/, '');
+        browserWindow.loadURL(appUrl);
       }
     }
   });
