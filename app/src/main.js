@@ -175,6 +175,8 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
   });
 
   browserWindow.webContents.on('new-window', function(event, url, frameName) {
+    log.debug(`Event [new-window]: ${url}`);
+
     // Any path outside of the application should be opened in the system browser
     // Reasons:
     //   1. That's what the user expects
@@ -199,8 +201,11 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
   });
 
   browserWindow.webContents.on('will-navigate', function(event, url) {
+    log.debug(`Event [will-navigate]: ${url}`);
+
     // Internal navigation needs to detect when navigating to a configured app and get the correct URL for that app.
-    if (url.startsWith('file://') && url.indexOf(slash(basePath)) > -1) {
+    const decodedUrl = decodeURIComponent(url);
+    if (decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(basePath)) > -1) {
       const appName = getAppFromUrl(url);
       if (appName) {
         event.preventDefault();
