@@ -1,14 +1,17 @@
 const {app, dialog, globalShortcut, protocol, shell, BrowserWindow, Menu} = require('electron');
 const {autoUpdater} = require('electron-updater');
 
+const config = require('config');
 const fs = require('fs');
-const path = require('path');
-const url = require('url');
+const log = require('electron-log');
 const open = require('open');
+const path = require('path');
 const slash = require('slash');
 
+const appEnv = require('./appenv.js');
+const {getAppPath, getAppFromUrl, getAppUrl} = require('./apppath.js');
+
 // Configure logger.
-const log = require('electron-log');
 log.transports.file.level = 'debug';
 
 // Allow the file:// protocol to be used by the fetch API.
@@ -16,95 +19,11 @@ protocol.registerSchemesAsPrivileged([
   {scheme: 'file', privileges: {supportFetchAPI: true}}
 ]);
 
-// Determine which environment we're running in.
-const isDev = require('electron-is-dev');
-const isDebug = isDev && process.argv.includes('--debug');
+// Initialize environment variables.
+appEnv.initEnvVars();
 
-if (isDev) {
-  process.env.ELECTRON_IS_DEV = isDev;
-
-  // this allows scripts to add this to module.paths if they want to pick up
-  // native deps built for electron out of opensphere-electron/app/node_modules
-  process.env.ELECTRON_EXTRA_PATH = module.paths[1];
-} else {
-  // When running in production, update the location for app configuration.
-  process.env.NODE_CONFIG_DIR = path.join(process.resourcesPath, 'config');
-}
-
-// Load app configuration.
-const config = require('config');
-const basePath = isDev ? path.resolve('..') : path.join(process.resourcesPath, 'app.asar');
-
-/**
- * Get the path for an application.
- * @param {string} appName The application name.
- * @param {string} basePath The base application path.
- * @return {string} The application path.
- */
-const getAppPath = function(appName, basePath) {
-  let appPath;
-
-  const configKey = `electron.apps.${appName}`;
-  const appConfig = config.has(configKey) ? config.get(configKey) : {};
-  const baseAppPath = appConfig.path || appName;
-
-  if (isDev) {
-    // Development (command line) path
-    appPath = path.resolve(basePath, baseAppPath);
-
-    if (!isDebug) {
-      // Compiled app
-      appPath = path.resolve(appPath, 'dist', baseAppPath);
-    }
-  } else {
-    // Production path
-    appPath = path.join(basePath, baseAppPath);
-  }
-
-  return appPath;
-};
-
-/**
- * Get the URL to load an application.
- * @param {string} appName The application name.
- * @param {string} baseUrl The base application URL.
- * @return {string} The application URL.
- */
-const getAppUrl = function(appName, baseUrl) {
-  const appPath = getAppPath(appName, baseUrl);
-  return url.format({
-    pathname: path.join(appPath, 'index.html'),
-    protocol: 'file:',
-    slashes: true
-  });
-};
-
-/**
- * Get the app name from a URL.
- * @param {string} url The URL.
- * @return {?string} The app name, or null if not found.
- */
-const getAppFromUrl = function(url) {
-  let matchedApp = null;
-  if (config.has('electron.apps')) {
-    const apps = config.get('electron.apps');
-    for (const appName in apps) {
-      if (url.indexOf(appName) != -1 && (!matchedApp || matchedApp.length < appName.length)) {
-        matchedApp = appName;
-      }
-    }
-  }
-  return matchedApp;
-};
-
-// Determine the location of the application.
-const baseApp = config.has('electron.baseApp') ? config.get('electron.baseApp') : 'opensphere';
-
-// Export the path for application use.
-process.env.OPENSPHERE_PATH = getAppPath('opensphere', basePath);
-
-// Location of preload scripts.
-const preloadDir = path.join(__dirname, 'preload');
+// Export the path to 'opensphere' for application use.
+process.env.OPENSPHERE_PATH = getAppPath('opensphere', appEnv.basePath);
 
 // XHR response headers that should be discarded.
 const discardedHeaders = [
@@ -136,7 +55,7 @@ const loadConfig = function() {
  * @return {string} The absolute path.
  */
 const getPreloadPath = function(script) {
-  return path.join(preloadDir, script);
+  return path.join(appEnv.preloadDir, script);
 };
 
 /**
@@ -157,8 +76,8 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
   });
 
   // Load external preload scripts into the session.
-  if (fs.existsSync(preloadDir)) {
-    const preloads = fs.readdirSync(preloadDir);
+  if (fs.existsSync(appEnv.preloadDir)) {
+    const preloads = fs.readdirSync(appEnv.preloadDir);
     browserWindow.webContents.session.setPreloads(preloads.map(getPreloadPath));
   }
 
@@ -186,7 +105,7 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
     //      treat Electron as a generic browser, that tears a hole in everything.
     const decodedUrl = decodeURIComponent(url);
     if (decodedUrl.indexOf('about:blank') === -1 &&
-        !(decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(basePath)) > -1)) {
+        !(decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(appEnv.basePath)) > -1)) {
       event.preventDefault();
       open(url);
     } else if (url.indexOf('.html') == -1) {
@@ -205,13 +124,13 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
 
     // Internal navigation needs to detect when navigating to a configured app and get the correct URL for that app.
     const decodedUrl = decodeURIComponent(url);
-    if (decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(basePath)) > -1) {
+    if (decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(appEnv.basePath)) > -1) {
       const appName = getAppFromUrl(url);
       if (appName) {
         event.preventDefault();
 
         // Get the actual app URL, appended with any fragment/query string from the requested URL.
-        const appUrl = getAppUrl(appName, basePath) + url.replace(/^[^#?]+/, '');
+        const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
         browserWindow.loadURL(appUrl);
       }
     }
@@ -228,7 +147,7 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
  */
 const createAppWindow = function(appName, url, parentWindow) {
   // Get the actual app URL, appended with any fragment/query string from the requested URL.
-  const appUrl = getAppUrl(appName, basePath) + url.replace(/^[^#?]+/, '');
+  const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
 
   if (parentWindow && parentWindow.webContents) {
     const appWindow = createBrowserWindow(parentWindow.webContents.getWebPreferences(), parentWindow);
@@ -260,7 +179,7 @@ const createMainWindow = function() {
   mainWindow = createBrowserWindow(webPreferences);
 
   // Load the app from the file system.
-  const appUrl = getAppUrl(baseApp, basePath);
+  const appUrl = getAppUrl(appEnv.baseApp, appEnv.basePath);
 
   log.info('loading', appUrl);
   mainWindow.loadURL(appUrl);
@@ -299,7 +218,7 @@ app.on('ready', function() {
   // Launch the application.
   createMainWindow();
 
-  if (!isDev) {
+  if (!appEnv.isDev) {
     // Allow opening Dev Tools via shortcut.
     const shortcut = process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I';
     globalShortcut.register(shortcut, function() {
@@ -346,7 +265,7 @@ app.on('web-contents-created', function(event, contents) {
     webPreferences.webSecurity = true;
 
     // Verify URL being loaded is local to the app
-    if (!params.src.startsWith('file://' + basePath)) {
+    if (!params.src.startsWith('file://' + appEnv.basePath)) {
       event.preventDefault();
     }
   });
