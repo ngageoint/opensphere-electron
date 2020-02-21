@@ -38,13 +38,13 @@ let mainWindow;
 
 /**
  * Load config for the main process. Keys supported:
- *  - electron.appName: Override the application name returned by app.getName()
+ *  - electron.appName: Override the application name.
  */
-const loadConfig = function() {
+const loadConfig = () => {
   if (config.has('electron.appName')) {
     const appName = config.get('electron.appName');
     if (appName) {
-      app.setName(appName);
+      app.name = appName;
     }
   }
 };
@@ -54,7 +54,7 @@ const loadConfig = function() {
  * @param {string} script The script.
  * @return {string} The absolute path.
  */
-const getPreloadPath = function(script) {
+const getPreloadPath = (script) => {
   return path.join(appEnv.preloadDir, script);
 };
 
@@ -64,7 +64,7 @@ const getPreloadPath = function(script) {
  * @param {Electron.BrowserWindow} parentWindow The opening browser window.
  * @return {Electron.BrowserWindow}
  */
-const createBrowserWindow = function(webPreferences, parentWindow) {
+const createBrowserWindow = (webPreferences, parentWindow) => {
   // Create the browser window.
   const parentBounds = parentWindow ? parentWindow.getBounds() : undefined;
   const browserWindow = new BrowserWindow({
@@ -82,9 +82,9 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
   }
 
   // Delete X-Frame-Options header from XHR responses to avoid preventing URL's from displaying in an iframe.
-  browserWindow.webContents.session.webRequest.onHeadersReceived({}, function(details, callback) {
+  browserWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     const headers = Object.keys(details.responseHeaders);
-    headers.forEach(function(header) {
+    headers.forEach((header) => {
       if (discardedHeaders.includes(header.toLowerCase())) {
         delete details.responseHeaders[header];
       }
@@ -93,7 +93,7 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
     callback({cancel: false, responseHeaders: details.responseHeaders});
   });
 
-  browserWindow.webContents.on('new-window', function(event, url, frameName) {
+  browserWindow.webContents.on('new-window', (event, url, frameName) => {
     log.debug(`Event [new-window]: ${url}`);
 
     // Any path outside of the application should be opened in the system browser
@@ -119,7 +119,7 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
     }
   });
 
-  browserWindow.webContents.on('will-navigate', function(event, url) {
+  browserWindow.webContents.on('will-navigate', (event, url) => {
     log.debug(`Event [will-navigate]: ${url}`);
 
     // Internal navigation needs to detect when navigating to a configured app and get the correct URL for that app.
@@ -145,7 +145,7 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
  * @param {string} url The app URL.
  * @param {Electron.BrowserWindow} parentWindow The opening browser window.
  */
-const createAppWindow = function(appName, url, parentWindow) {
+const createAppWindow = (appName, url, parentWindow) => {
   // Get the actual app URL, appended with any fragment/query string from the requested URL.
   const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
 
@@ -158,7 +158,7 @@ const createAppWindow = function(appName, url, parentWindow) {
 /**
  * Create the main application window.
  */
-const createMainWindow = function() {
+const createMainWindow = () => {
   // Default web preferences for the main browser window.
   const webPreferences = {
     // Don't throttle animations/timers when backgrounded.
@@ -184,16 +184,16 @@ const createMainWindow = function() {
   log.info('loading', appUrl);
   mainWindow.loadURL(appUrl);
 
-  mainWindow.on('crashed', function() {
+  mainWindow.on('crashed', () => {
     log.error('Main window crashed');
   });
 
-  mainWindow.on('destroyed', function() {
+  mainWindow.on('destroyed', () => {
     log.error('Main window destroyed');
   });
 
   // Emitted when the window is closed.
-  mainWindow.on('closed', function() {
+  mainWindow.on('closed', () => {
     // Clean up listeners.
     mainWindow.removeAllListeners();
 
@@ -207,7 +207,7 @@ const createMainWindow = function() {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', function() {
+app.on('ready', () => {
   loadConfig();
 
   // Set up the application menu.
@@ -221,7 +221,7 @@ app.on('ready', function() {
   if (!appEnv.isDev) {
     // Allow opening Dev Tools via shortcut.
     const shortcut = process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I';
-    globalShortcut.register(shortcut, function() {
+    globalShortcut.register(shortcut, () => {
       const focusedWindow = BrowserWindow.getFocusedWindow();
       if (focusedWindow) {
         focusedWindow.toggleDevTools();
@@ -236,7 +236,7 @@ app.on('ready', function() {
 });
 
 
-app.on('window-all-closed', function() {
+app.on('window-all-closed', () => {
   // On OS X it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
@@ -244,7 +244,7 @@ app.on('window-all-closed', function() {
   }
 });
 
-app.on('activate', function() {
+app.on('activate', () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (mainWindow === null) {
@@ -252,8 +252,8 @@ app.on('activate', function() {
   }
 });
 
-app.on('web-contents-created', function(event, contents) {
-  contents.on('will-attach-webview', function(event, webPreferences, params) {
+app.on('web-contents-created', (event, contents) => {
+  contents.on('will-attach-webview', (event, webPreferences, params) => {
     // Strip away preload scripts because they always have Node integration enabled
     delete webPreferences.preload;
     delete webPreferences.preloadURL;
@@ -265,7 +265,7 @@ app.on('web-contents-created', function(event, contents) {
     webPreferences.webSecurity = true;
 
     // Verify URL being loaded is local to the app
-    if (!params.src.startsWith('file://' + appEnv.basePath)) {
+    if (!params.src.startsWith(`file://${appEnv.basePath}`)) {
       event.preventDefault();
     }
   });
@@ -275,7 +275,7 @@ app.on('web-contents-created', function(event, contents) {
  * Handle update download progress event.
  * @param {DownloadProgress} info The download progress info.
  */
-const onDownloadProgress = function(info) {
+const onDownloadProgress = (info) => {
   if (mainWindow && info && info.percent != null) {
     mainWindow.setProgressBar(info.percent / 100);
   }
@@ -285,7 +285,7 @@ const onDownloadProgress = function(info) {
  * Handle update download selection.
  * @param {number} index The selected button index.
  */
-const onUpdateSelection = function(index) {
+const onUpdateSelection = (index) => {
   if (index === 0) {
     if (process.env.PORTABLE_EXECUTABLE_DIR) {
       // Load the portable download page if configured. If not, the user shouldn't have been notified of an update.
@@ -305,14 +305,13 @@ const onUpdateSelection = function(index) {
  * Handle update available event.
  * @param {UpdateInfo} info The update info.
  */
-const onUpdateAvailable = function(info) {
+const onUpdateAvailable = (info) => {
   // Prompt that a new version is available when using an installed app, or the release page is configured.
   if (!process.env.PORTABLE_EXECUTABLE_DIR || config.has('electron.releaseUrl')) {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Available',
-      message: 'A new version of ' + app.getName() + ' (' + info.version + ') is available. ' +
-          'Would you like to download it now?',
+      message: `A new version of ${app.name} (${info.version}) is available. Would you like to download it now?`,
       buttons: ['Yes', 'No'],
       defaultId: 0
     }, onUpdateSelection);
@@ -323,7 +322,7 @@ const onUpdateAvailable = function(info) {
  * Handle user selection from app update install dialog.
  * @param {number} index The selected button index.
  */
-const onInstallSelection = function(index) {
+const onInstallSelection = (index) => {
   if (index === 0) {
     log.debug('Restarting application to install update.');
     autoUpdater.quitAndInstall();
@@ -334,14 +333,14 @@ const onInstallSelection = function(index) {
  * Handle update downloaded event.
  * @param {UpdateInfo} info The update info.
  */
-const onUpdateDownloaded = function(info) {
+const onUpdateDownloaded = (info) => {
   if (mainWindow) {
     mainWindow.setProgressBar(-1);
   }
 
   if (process.platform !== 'darwin') {
     const message = 'Update has been downloaded. Would you like to install it now, or wait until the next time ' +
-          app.getName() + ' is launched?';
+        `${app.name} is launched?`;
 
     dialog.showMessageBox(mainWindow, {
       type: 'info',
@@ -355,7 +354,7 @@ const onUpdateDownloaded = function(info) {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Downloaded',
-      message: 'Update has been downloaded, and will be applied the next time ' + app.getName() + ' is launched.',
+      message: `Update has been downloaded, and will be applied the next time ${app.name} is launched.`,
       buttons: ['OK'],
       defaultId: 0
     });
