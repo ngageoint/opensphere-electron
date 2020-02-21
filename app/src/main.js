@@ -13,6 +13,7 @@ const {app, dialog, globalShortcut, protocol, shell, BrowserWindow, Menu} = requ
 // Local Modules
 const appEnv = require('./appenv.js');
 const {getAppPath, getAppFromUrl, getAppUrl} = require('./apppath.js');
+const {getDefaultWebPreferences} = require('./prefs.js');
 
 // Configure logger.
 log.transports.file.level = 'debug';
@@ -163,12 +164,7 @@ const createAppWindow = (appName, url, parentWindow) => {
  */
 const createMainWindow = () => {
   // Default web preferences for the main browser window.
-  const webPreferences = {
-    // Don't throttle animations/timers when backgrounded.
-    backgroundThrottling: false,
-    // Use native window.open so external windows can access their parent.
-    nativeWindowOpen: true
-  };
+  const webPreferences = getDefaultWebPreferences();
 
   // Load additional preferences from config.
   if (config.has('electron.webPreferences')) {
