@@ -104,7 +104,7 @@ const windowMenu = {
 const template = [editMenu, viewMenu, windowMenu];
 
 if (process.platform === 'darwin') {
-  const name = app.getName();
+  const name = app.name;
   template.unshift({
     label: name,
     submenu: [{
