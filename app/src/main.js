@@ -1,13 +1,16 @@
-const {app, dialog, globalShortcut, protocol, shell, BrowserWindow, Menu} = require('electron');
-const {autoUpdater} = require('electron-updater');
-
+// Node Modules
 const config = require('config');
 const fs = require('fs');
 const log = require('electron-log');
+const {autoUpdater} = require('electron-updater');
 const open = require('open');
 const path = require('path');
 const slash = require('slash');
 
+// Electron Modules
+const {app, dialog, globalShortcut, protocol, shell, BrowserWindow, Menu} = require('electron');
+
+// Local Modules
 const appEnv = require('./appenv.js');
 const {getAppPath, getAppFromUrl, getAppUrl} = require('./apppath.js');
 
