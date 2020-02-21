@@ -1,5 +1,8 @@
-const {app, BrowserWindow} = require('electron');
+// Node Modules
 const isDev = require('electron-is-dev');
+
+// Electron Modules
+const {app, BrowserWindow} = require('electron');
 
 const editMenu = {
   label: 'Edit',
