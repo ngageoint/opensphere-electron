@@ -13,6 +13,7 @@ const {app, dialog, globalShortcut, protocol, shell, BrowserWindow, Menu} = requ
 // Local Modules
 const appEnv = require('./appenv.js');
 const {getAppPath, getAppFromUrl, getAppUrl} = require('./apppath.js');
+const {getUserCertForUrl} = require('./usercerts.js');
 const {getDefaultWebPreferences} = require('./prefs.js');
 
 // Configure logger.
@@ -137,6 +138,24 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
         const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
         browserWindow.loadURL(appUrl);
       }
+    }
+  });
+
+  browserWindow.webContents.on('select-client-certificate', (event, url, list, callback) => {
+    // Let Electron handle selection if the user doesn't have multiple certificates.
+    if (list && list.length > 1) {
+      event.preventDefault();
+
+      getUserCertForUrl(url, list, browserWindow.webContents).then((cert) => {
+        // Allow this to be undefined in case the user cancels the prompt (ie, don't use a cert).
+        callback(cert || undefined);
+      }, (err) => {
+        const reason = err && err.message || 'unspecified reason';
+        log.error(`Client certificate selection failed: ${reason}`);
+
+        // Don't use a certificate.
+        callback();
+      });
     }
   });
 
