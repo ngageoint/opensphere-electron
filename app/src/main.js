@@ -147,14 +147,12 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
       event.preventDefault();
 
       getUserCertForUrl(url, list, browserWindow.webContents).then((cert) => {
-        // Allow this to be undefined in case the user cancels the prompt (ie, don't use a cert).
-        callback(cert || undefined);
+        callback(cert);
       }, (err) => {
-        const reason = err && err.message || 'unspecified reason';
+        // This intentionally doesn't call the callback, because Electron will remember the decision. If the app was
+        // refreshed, we want Electron to try selecting a cert again when the app loads.
+        const reason = err && err.message || 'Unspecified reason.';
         log.error(`Client certificate selection failed: ${reason}`);
-
-        // Don't use a certificate.
-        callback();
       });
     }
   });
