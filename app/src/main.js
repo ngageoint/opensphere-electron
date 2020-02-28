@@ -1,10 +1,17 @@
+const path = require('path');
+
+// When running in production, update the location for app configuration. This must be done before config is first
+// required, or app configuration will not be loaded properly.
+if (!require('electron-is-dev')) {
+  process.env.NODE_CONFIG_DIR = path.join(process.resourcesPath, 'config');
+}
+
 // Node Modules
 const config = require('config');
 const fs = require('fs');
 const log = require('electron-log');
 const {autoUpdater} = require('electron-updater');
 const open = require('open');
-const path = require('path');
 const slash = require('slash');
 
 // Electron Modules
