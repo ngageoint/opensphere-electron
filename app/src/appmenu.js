@@ -1,5 +1,8 @@
-const {app, BrowserWindow} = require('electron');
+// Node Modules
 const isDev = require('electron-is-dev');
+
+// Electron Modules
+const {app, BrowserWindow} = require('electron');
 
 const editMenu = {
   label: 'Edit',
@@ -104,7 +107,7 @@ const windowMenu = {
 const template = [editMenu, viewMenu, windowMenu];
 
 if (process.platform === 'darwin') {
-  const name = app.getName();
+  const name = app.name;
   template.unshift({
     label: name,
     submenu: [{
