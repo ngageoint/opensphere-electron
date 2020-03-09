@@ -1,14 +1,29 @@
-const {app, dialog, globalShortcut, protocol, shell, BrowserWindow, Menu} = require('electron');
-const {autoUpdater} = require('electron-updater');
-
-const fs = require('fs');
 const path = require('path');
-const url = require('url');
+
+// When running in production, update the location for app configuration. This must be done before config is first
+// required, or app configuration will not be loaded properly.
+if (!require('electron-is-dev')) {
+  process.env.NODE_CONFIG_DIR = path.join(process.resourcesPath, 'config');
+}
+
+// Node Modules
+const config = require('config');
+const fs = require('fs');
+const log = require('electron-log');
+const {autoUpdater} = require('electron-updater');
 const open = require('open');
 const slash = require('slash');
 
+// Electron Modules
+const {app, dialog, globalShortcut, protocol, shell, BrowserWindow, Menu} = require('electron');
+
+// Local Modules
+const appEnv = require('./appenv.js');
+const {getAppPath, getAppFromUrl, getAppUrl} = require('./apppath.js');
+const {getUserCertForUrl} = require('./usercerts.js');
+const {getDefaultWebPreferences} = require('./prefs.js');
+
 // Configure logger.
-const log = require('electron-log');
 log.transports.file.level = 'debug';
 
 // Allow the file:// protocol to be used by the fetch API.
@@ -16,95 +31,11 @@ protocol.registerSchemesAsPrivileged([
   {scheme: 'file', privileges: {supportFetchAPI: true}}
 ]);
 
-// Determine which environment we're running in.
-const isDev = require('electron-is-dev');
-const isDebug = isDev && process.argv.includes('--debug');
+// Initialize environment variables.
+appEnv.initEnvVars();
 
-if (isDev) {
-  process.env.ELECTRON_IS_DEV = isDev;
-
-  // this allows scripts to add this to module.paths if they want to pick up
-  // native deps built for electron out of opensphere-electron/app/node_modules
-  process.env.ELECTRON_EXTRA_PATH = module.paths[1];
-} else {
-  // When running in production, update the location for app configuration.
-  process.env.NODE_CONFIG_DIR = path.join(process.resourcesPath, 'config');
-}
-
-// Load app configuration.
-const config = require('config');
-const basePath = isDev ? path.resolve('..') : path.join(process.resourcesPath, 'app.asar');
-
-/**
- * Get the path for an application.
- * @param {string} appName The application name.
- * @param {string} basePath The base application path.
- * @return {string} The application path.
- */
-const getAppPath = function(appName, basePath) {
-  let appPath;
-
-  const configKey = `electron.apps.${appName}`;
-  const appConfig = config.has(configKey) ? config.get(configKey) : {};
-  const baseAppPath = appConfig.path || appName;
-
-  if (isDev) {
-    // Development (command line) path
-    appPath = path.resolve(basePath, baseAppPath);
-
-    if (!isDebug) {
-      // Compiled app
-      appPath = path.resolve(appPath, 'dist', baseAppPath);
-    }
-  } else {
-    // Production path
-    appPath = path.join(basePath, baseAppPath);
-  }
-
-  return appPath;
-};
-
-/**
- * Get the URL to load an application.
- * @param {string} appName The application name.
- * @param {string} baseUrl The base application URL.
- * @return {string} The application URL.
- */
-const getAppUrl = function(appName, baseUrl) {
-  const appPath = getAppPath(appName, baseUrl);
-  return url.format({
-    pathname: path.join(appPath, 'index.html'),
-    protocol: 'file:',
-    slashes: true
-  });
-};
-
-/**
- * Get the app name from a URL.
- * @param {string} url The URL.
- * @return {?string} The app name, or null if not found.
- */
-const getAppFromUrl = function(url) {
-  let matchedApp = null;
-  if (config.has('electron.apps')) {
-    const apps = config.get('electron.apps');
-    for (const appName in apps) {
-      if (url.indexOf(appName) != -1 && (!matchedApp || matchedApp.length < appName.length)) {
-        matchedApp = appName;
-      }
-    }
-  }
-  return matchedApp;
-};
-
-// Determine the location of the application.
-const baseApp = config.has('electron.baseApp') ? config.get('electron.baseApp') : 'opensphere';
-
-// Export the path for application use.
-process.env.OPENSPHERE_PATH = getAppPath('opensphere', basePath);
-
-// Location of preload scripts.
-const preloadDir = path.join(__dirname, 'preload');
+// Export the path to 'opensphere' for application use.
+process.env.OPENSPHERE_PATH = getAppPath('opensphere', appEnv.basePath);
 
 // XHR response headers that should be discarded.
 const discardedHeaders = [
@@ -119,13 +50,13 @@ let mainWindow;
 
 /**
  * Load config for the main process. Keys supported:
- *  - electron.appName: Override the application name returned by app.getName()
+ *  - electron.appName: Override the application name.
  */
-const loadConfig = function() {
+const loadConfig = () => {
   if (config.has('electron.appName')) {
     const appName = config.get('electron.appName');
     if (appName) {
-      app.setName(appName);
+      app.name = appName;
     }
   }
 };
@@ -135,8 +66,8 @@ const loadConfig = function() {
  * @param {string} script The script.
  * @return {string} The absolute path.
  */
-const getPreloadPath = function(script) {
-  return path.join(preloadDir, script);
+const getPreloadPath = (script) => {
+  return path.join(appEnv.preloadDir, script);
 };
 
 /**
@@ -145,7 +76,7 @@ const getPreloadPath = function(script) {
  * @param {Electron.BrowserWindow} parentWindow The opening browser window.
  * @return {Electron.BrowserWindow}
  */
-const createBrowserWindow = function(webPreferences, parentWindow) {
+const createBrowserWindow = (webPreferences, parentWindow) => {
   // Create the browser window.
   const parentBounds = parentWindow ? parentWindow.getBounds() : undefined;
   const browserWindow = new BrowserWindow({
@@ -157,15 +88,15 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
   });
 
   // Load external preload scripts into the session.
-  if (fs.existsSync(preloadDir)) {
-    const preloads = fs.readdirSync(preloadDir);
+  if (fs.existsSync(appEnv.preloadDir)) {
+    const preloads = fs.readdirSync(appEnv.preloadDir);
     browserWindow.webContents.session.setPreloads(preloads.map(getPreloadPath));
   }
 
   // Delete X-Frame-Options header from XHR responses to avoid preventing URL's from displaying in an iframe.
-  browserWindow.webContents.session.webRequest.onHeadersReceived({}, function(details, callback) {
+  browserWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     const headers = Object.keys(details.responseHeaders);
-    headers.forEach(function(header) {
+    headers.forEach((header) => {
       if (discardedHeaders.includes(header.toLowerCase())) {
         delete details.responseHeaders[header];
       }
@@ -174,7 +105,7 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
     callback({cancel: false, responseHeaders: details.responseHeaders});
   });
 
-  browserWindow.webContents.on('new-window', function(event, url, frameName) {
+  browserWindow.webContents.on('new-window', (event, url, frameName) => {
     log.debug(`Event [new-window]: ${url}`);
 
     // Any path outside of the application should be opened in the system browser
@@ -186,7 +117,7 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
     //      treat Electron as a generic browser, that tears a hole in everything.
     const decodedUrl = decodeURIComponent(url);
     if (decodedUrl.indexOf('about:blank') === -1 &&
-        !(decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(basePath)) > -1)) {
+        !(decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(appEnv.basePath)) > -1)) {
       event.preventDefault();
       open(url);
     } else if (url.indexOf('.html') == -1) {
@@ -200,20 +131,36 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
     }
   });
 
-  browserWindow.webContents.on('will-navigate', function(event, url) {
+  browserWindow.webContents.on('will-navigate', (event, url) => {
     log.debug(`Event [will-navigate]: ${url}`);
 
     // Internal navigation needs to detect when navigating to a configured app and get the correct URL for that app.
     const decodedUrl = decodeURIComponent(url);
-    if (decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(basePath)) > -1) {
+    if (decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(appEnv.basePath)) > -1) {
       const appName = getAppFromUrl(url);
       if (appName) {
         event.preventDefault();
 
         // Get the actual app URL, appended with any fragment/query string from the requested URL.
-        const appUrl = getAppUrl(appName, basePath) + url.replace(/^[^#?]+/, '');
+        const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
         browserWindow.loadURL(appUrl);
       }
+    }
+  });
+
+  browserWindow.webContents.on('select-client-certificate', (event, url, list, callback) => {
+    // Let Electron handle selection if the user doesn't have multiple certificates.
+    if (list && list.length > 1) {
+      event.preventDefault();
+
+      getUserCertForUrl(url, list, browserWindow.webContents).then((cert) => {
+        callback(cert);
+      }, (err) => {
+        // This intentionally doesn't call the callback, because Electron will remember the decision. If the app was
+        // refreshed, we want Electron to try selecting a cert again when the app loads.
+        const reason = err && err.message || 'Unspecified reason.';
+        log.error(`Client certificate selection failed: ${reason}`);
+      });
     }
   });
 
@@ -226,9 +173,9 @@ const createBrowserWindow = function(webPreferences, parentWindow) {
  * @param {string} url The app URL.
  * @param {Electron.BrowserWindow} parentWindow The opening browser window.
  */
-const createAppWindow = function(appName, url, parentWindow) {
+const createAppWindow = (appName, url, parentWindow) => {
   // Get the actual app URL, appended with any fragment/query string from the requested URL.
-  const appUrl = getAppUrl(appName, basePath) + url.replace(/^[^#?]+/, '');
+  const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
 
   if (parentWindow && parentWindow.webContents) {
     const appWindow = createBrowserWindow(parentWindow.webContents.getWebPreferences(), parentWindow);
@@ -239,14 +186,9 @@ const createAppWindow = function(appName, url, parentWindow) {
 /**
  * Create the main application window.
  */
-const createMainWindow = function() {
+const createMainWindow = () => {
   // Default web preferences for the main browser window.
-  const webPreferences = {
-    // Don't throttle animations/timers when backgrounded.
-    backgroundThrottling: false,
-    // Use native window.open so external windows can access their parent.
-    nativeWindowOpen: true
-  };
+  const webPreferences = getDefaultWebPreferences();
 
   // Load additional preferences from config.
   if (config.has('electron.webPreferences')) {
@@ -260,21 +202,21 @@ const createMainWindow = function() {
   mainWindow = createBrowserWindow(webPreferences);
 
   // Load the app from the file system.
-  const appUrl = getAppUrl(baseApp, basePath);
+  const appUrl = getAppUrl(appEnv.baseApp, appEnv.basePath);
 
   log.info('loading', appUrl);
   mainWindow.loadURL(appUrl);
 
-  mainWindow.on('crashed', function() {
+  mainWindow.on('crashed', () => {
     log.error('Main window crashed');
   });
 
-  mainWindow.on('destroyed', function() {
+  mainWindow.on('destroyed', () => {
     log.error('Main window destroyed');
   });
 
   // Emitted when the window is closed.
-  mainWindow.on('closed', function() {
+  mainWindow.on('closed', () => {
     // Clean up listeners.
     mainWindow.removeAllListeners();
 
@@ -288,7 +230,7 @@ const createMainWindow = function() {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', function() {
+app.on('ready', () => {
   loadConfig();
 
   // Set up the application menu.
@@ -299,10 +241,10 @@ app.on('ready', function() {
   // Launch the application.
   createMainWindow();
 
-  if (!isDev) {
+  if (!appEnv.isDev) {
     // Allow opening Dev Tools via shortcut.
     const shortcut = process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I';
-    globalShortcut.register(shortcut, function() {
+    globalShortcut.register(shortcut, () => {
       const focusedWindow = BrowserWindow.getFocusedWindow();
       if (focusedWindow) {
         focusedWindow.toggleDevTools();
@@ -317,7 +259,7 @@ app.on('ready', function() {
 });
 
 
-app.on('window-all-closed', function() {
+app.on('window-all-closed', () => {
   // On OS X it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
@@ -325,7 +267,7 @@ app.on('window-all-closed', function() {
   }
 });
 
-app.on('activate', function() {
+app.on('activate', () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (mainWindow === null) {
@@ -333,8 +275,8 @@ app.on('activate', function() {
   }
 });
 
-app.on('web-contents-created', function(event, contents) {
-  contents.on('will-attach-webview', function(event, webPreferences, params) {
+app.on('web-contents-created', (event, contents) => {
+  contents.on('will-attach-webview', (event, webPreferences, params) => {
     // Strip away preload scripts because they always have Node integration enabled
     delete webPreferences.preload;
     delete webPreferences.preloadURL;
@@ -346,7 +288,7 @@ app.on('web-contents-created', function(event, contents) {
     webPreferences.webSecurity = true;
 
     // Verify URL being loaded is local to the app
-    if (!params.src.startsWith('file://' + basePath)) {
+    if (!params.src.startsWith(`file://${appEnv.basePath}`)) {
       event.preventDefault();
     }
   });
@@ -356,7 +298,7 @@ app.on('web-contents-created', function(event, contents) {
  * Handle update download progress event.
  * @param {DownloadProgress} info The download progress info.
  */
-const onDownloadProgress = function(info) {
+const onDownloadProgress = (info) => {
   if (mainWindow && info && info.percent != null) {
     mainWindow.setProgressBar(info.percent / 100);
   }
@@ -366,7 +308,7 @@ const onDownloadProgress = function(info) {
  * Handle update download selection.
  * @param {number} index The selected button index.
  */
-const onUpdateSelection = function(index) {
+const onUpdateSelection = (index) => {
   if (index === 0) {
     if (process.env.PORTABLE_EXECUTABLE_DIR) {
       // Load the portable download page if configured. If not, the user shouldn't have been notified of an update.
@@ -386,14 +328,13 @@ const onUpdateSelection = function(index) {
  * Handle update available event.
  * @param {UpdateInfo} info The update info.
  */
-const onUpdateAvailable = function(info) {
+const onUpdateAvailable = (info) => {
   // Prompt that a new version is available when using an installed app, or the release page is configured.
   if (!process.env.PORTABLE_EXECUTABLE_DIR || config.has('electron.releaseUrl')) {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Available',
-      message: 'A new version of ' + app.getName() + ' (' + info.version + ') is available. ' +
-          'Would you like to download it now?',
+      message: `A new version of ${app.name} (${info.version}) is available. Would you like to download it now?`,
       buttons: ['Yes', 'No'],
       defaultId: 0
     }, onUpdateSelection);
@@ -404,7 +345,7 @@ const onUpdateAvailable = function(info) {
  * Handle user selection from app update install dialog.
  * @param {number} index The selected button index.
  */
-const onInstallSelection = function(index) {
+const onInstallSelection = (index) => {
   if (index === 0) {
     log.debug('Restarting application to install update.');
     autoUpdater.quitAndInstall();
@@ -415,14 +356,14 @@ const onInstallSelection = function(index) {
  * Handle update downloaded event.
  * @param {UpdateInfo} info The update info.
  */
-const onUpdateDownloaded = function(info) {
+const onUpdateDownloaded = (info) => {
   if (mainWindow) {
     mainWindow.setProgressBar(-1);
   }
 
   if (process.platform !== 'darwin') {
     const message = 'Update has been downloaded. Would you like to install it now, or wait until the next time ' +
-          app.getName() + ' is launched?';
+        `${app.name} is launched?`;
 
     dialog.showMessageBox(mainWindow, {
       type: 'info',
@@ -436,7 +377,7 @@ const onUpdateDownloaded = function(info) {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Downloaded',
-      message: 'Update has been downloaded, and will be applied the next time ' + app.getName() + ' is launched.',
+      message: `Update has been downloaded, and will be applied the next time ${app.name} is launched.`,
       buttons: ['OK'],
       defaultId: 0
     });
