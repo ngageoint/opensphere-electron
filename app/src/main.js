@@ -139,10 +139,11 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     if (decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(appEnv.basePath)) > -1) {
       const appName = getAppFromUrl(url);
       if (appName) {
-        event.preventDefault();
-
         // Get the actual app URL, appended with any fragment/query string from the requested URL.
         const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
+        log.debug(`Loading app URL: ${appUrl}`);
+
+        event.preventDefault();
         browserWindow.loadURL(appUrl);
       }
     }
@@ -164,6 +165,24 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     }
   });
 
+  browserWindow.webContents.on('will-prevent-unload', (event) => {
+    // The app is attempting to cancel the unload event. Prompt the user to allow this or not.
+    const choice = dialog.showMessageBoxSync(browserWindow, {
+      type: 'info',
+      buttons: ['Leave', 'Stay'],
+      icon: appEnv.iconPath || undefined,
+      title: 'Warning!',
+      message: 'You have unsaved changes on this page. If you navigate away from this page, your ' +
+          'changes will be lost.',
+      defaultId: 0,
+      cancelId: 1
+    });
+
+    if (choice === 0) {
+      event.preventDefault();
+    }
+  });
+
   return browserWindow;
 };
 
@@ -178,6 +197,8 @@ const createAppWindow = (appName, url, parentWindow) => {
   const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
 
   if (parentWindow && parentWindow.webContents) {
+    log.debug(`Launching app ${appName} with URL ${appUrl}`);
+
     const appWindow = createBrowserWindow(parentWindow.webContents.getWebPreferences(), parentWindow);
     appWindow.loadURL(appUrl);
   }
