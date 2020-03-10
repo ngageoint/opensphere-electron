@@ -165,6 +165,24 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     }
   });
 
+  browserWindow.webContents.on('will-prevent-unload', (event) => {
+    // The app is attempting to cancel the unload event. Prompt the user to allow this or not.
+    const choice = dialog.showMessageBoxSync(browserWindow, {
+      type: 'info',
+      buttons: ['Leave', 'Stay'],
+      icon: appEnv.iconPath || undefined,
+      title: 'Warning!',
+      message: 'You have unsaved changes on this page. If you navigate away from this page, your ' +
+          'changes will be lost.',
+      defaultId: 0,
+      cancelId: 1
+    });
+
+    if (choice === 0) {
+      event.preventDefault();
+    }
+  });
+
   return browserWindow;
 };
 
