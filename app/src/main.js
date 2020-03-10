@@ -139,10 +139,11 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     if (decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(appEnv.basePath)) > -1) {
       const appName = getAppFromUrl(url);
       if (appName) {
-        event.preventDefault();
-
         // Get the actual app URL, appended with any fragment/query string from the requested URL.
         const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
+        log.debug(`Loading app URL: ${appUrl}`);
+
+        event.preventDefault();
         browserWindow.loadURL(appUrl);
       }
     }
@@ -178,6 +179,8 @@ const createAppWindow = (appName, url, parentWindow) => {
   const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
 
   if (parentWindow && parentWindow.webContents) {
+    log.debug(`Launching app ${appName} with URL ${appUrl}`);
+
     const appWindow = createBrowserWindow(parentWindow.webContents.getWebPreferences(), parentWindow);
     appWindow.loadURL(appUrl);
   }
