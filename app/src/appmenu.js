@@ -2,7 +2,13 @@
 const isDev = require('electron-is-dev');
 
 // Electron Modules
-const {app, BrowserWindow} = require('electron');
+const {app, BrowserWindow, Menu} = require('electron');
+
+/**
+ * The app's home URL, used for the History > Home menu item.
+ * @type {string}
+ */
+let homeUrl = '';
 
 const editMenu = {
   label: 'Edit',
@@ -55,9 +61,7 @@ const viewMenu = {
     }
   }, {
     label: 'Toggle Full Screen',
-    accelerator: (function() {
-      return process.platform === 'darwin' ? 'Ctrl+Command+F' : 'F11';
-    })(),
+    accelerator: process.platform === 'darwin' ? 'Ctrl+Command+F' : 'F11',
     click: function(item, focusedWindow) {
       if (focusedWindow) {
         focusedWindow.setFullScreen(!focusedWindow.isFullScreen());
@@ -69,9 +73,7 @@ const viewMenu = {
 if (isDev) {
   viewMenu.submenu.push({
     label: 'Toggle Developer Tools',
-    accelerator: (function() {
-      return process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I';
-    })(),
+    accelerator: process.platform === 'darwin' ? 'Alt+Command+I' : 'Ctrl+Shift+I',
     click: function(item, focusedWindow) {
       if (focusedWindow) {
         focusedWindow.toggleDevTools();
@@ -79,6 +81,35 @@ if (isDev) {
     }
   });
 }
+
+const historyMenu = {
+  label: 'History',
+  submenu: [{
+    label: 'Home',
+    accelerator: process.platform === 'darwin' ? 'Command+Shift+H' : 'Alt+Home',
+    click: function(item, focusedWindow) {
+      if (focusedWindow && homeUrl) {
+        focusedWindow.loadURL(homeUrl);
+      }
+    }
+  }, {
+    label: 'Back',
+    accelerator: process.platform === 'darwin' ? 'Command+Left' : 'Alt+Left',
+    click: function(item, focusedWindow) {
+      if (focusedWindow && focusedWindow.webContents) {
+        focusedWindow.webContents.goBack();
+      }
+    }
+  }, {
+    label: 'Forward',
+    accelerator: process.platform === 'darwin' ? 'Command+Right' : 'Alt+Right',
+    click: function(item, focusedWindow) {
+      if (focusedWindow && focusedWindow.webContents) {
+        focusedWindow.webContents.goForward();
+      }
+    }
+  }]
+};
 
 const windowMenu = {
   label: 'Window',
@@ -104,7 +135,7 @@ const windowMenu = {
   }]
 };
 
-const template = [editMenu, viewMenu, windowMenu];
+const template = [editMenu, viewMenu, historyMenu, windowMenu];
 
 if (process.platform === 'darwin') {
   const name = app.name;
@@ -151,4 +182,23 @@ if (process.platform === 'darwin') {
   }
 }
 
-module.exports = template;
+
+/**
+ * Update the application menu.
+ */
+const updateAppMenu = () => {
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+};
+
+
+/**
+ * Set the home URL for the application.
+ * @param  {string} url The URL.
+ */
+const setHomeUrl = (url) => {
+  homeUrl = url;
+};
+
+
+module.exports = {updateAppMenu, setHomeUrl};

@@ -15,10 +15,11 @@ const open = require('open');
 const slash = require('slash');
 
 // Electron Modules
-const {app, dialog, globalShortcut, protocol, shell, BrowserWindow, Menu} = require('electron');
+const {app, dialog, globalShortcut, protocol, shell, BrowserWindow} = require('electron');
 
 // Local Modules
 const appEnv = require('./appenv.js');
+const appMenu = require('./appmenu.js');
 const {getAppPath, getAppFromUrl, getAppUrl} = require('./apppath.js');
 const {getUserCertForUrl} = require('./usercerts.js');
 const {getDefaultWebPreferences} = require('./prefs.js');
@@ -224,6 +225,7 @@ const createMainWindow = () => {
 
   // Load the app from the file system.
   const appUrl = getAppUrl(appEnv.baseApp, appEnv.basePath);
+  appMenu.setHomeUrl(appUrl);
 
   log.info('loading', appUrl);
   mainWindow.loadURL(appUrl);
@@ -255,9 +257,7 @@ app.on('ready', () => {
   loadConfig();
 
   // Set up the application menu.
-  const template = require('./appmenu.js');
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
+  appMenu.updateAppMenu();
 
   // Launch the application.
   createMainWindow();
