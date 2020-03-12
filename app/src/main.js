@@ -106,10 +106,12 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     callback({cancel: false, responseHeaders: details.responseHeaders});
   });
 
+  // Update history menu (forward/back state) on navigation.
   browserWindow.webContents.on('did-navigate', (event) => {
     appMenu.updateHistoryMenu();
   });
 
+  // Update history menu (forward/back state) on page navigation (URL hash change).
   browserWindow.webContents.on('did-navigate-in-page', (event) => {
     appMenu.updateHistoryMenu();
   });
