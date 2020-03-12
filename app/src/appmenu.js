@@ -5,6 +5,11 @@ const isDev = require('electron-is-dev');
 const {app, BrowserWindow, Menu} = require('electron');
 
 /**
+ * The application menu.
+ */
+let appMenu;
+
+/**
  * The app's home URL, used for the History > Home menu item.
  * @type {string}
  */
@@ -82,10 +87,18 @@ if (isDev) {
   });
 }
 
+const HistoryItemId = {
+  BACK: 'go-back',
+  FORWARD: 'go-forward',
+  HOME: 'go-home'
+};
+
 const historyMenu = {
   label: 'History',
   submenu: [{
+    id: HistoryItemId.HOME,
     label: 'Home',
+    visible: false,
     accelerator: process.platform === 'darwin' ? 'Command+Shift+H' : 'Alt+Home',
     click: function(item, focusedWindow) {
       if (focusedWindow && homeUrl) {
@@ -93,6 +106,7 @@ const historyMenu = {
       }
     }
   }, {
+    id: HistoryItemId.BACK,
     label: 'Back',
     accelerator: process.platform === 'darwin' ? 'Command+Left' : 'Alt+Left',
     click: function(item, focusedWindow) {
@@ -101,6 +115,7 @@ const historyMenu = {
       }
     }
   }, {
+    id: HistoryItemId.FORWARD,
     label: 'Forward',
     accelerator: process.platform === 'darwin' ? 'Command+Right' : 'Alt+Right',
     click: function(item, focusedWindow) {
@@ -184,11 +199,44 @@ if (process.platform === 'darwin') {
 
 
 /**
- * Update the application menu.
+ * Create the application menu.
  */
-const updateAppMenu = () => {
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
+const createAppMenu = () => {
+  if (!appMenu) {
+    appMenu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(appMenu);
+
+    // update the history menu when the focused window changes
+    app.on('browser-window-focus', () => {
+      updateHistoryMenu();
+    });
+  }
+};
+
+
+/**
+ * Update the history menu.
+ */
+const updateHistoryMenu = () => {
+  if (appMenu) {
+    const homeItem = appMenu.getMenuItemById(HistoryItemId.HOME);
+    if (homeItem) {
+      homeItem.visible = !!homeUrl;
+    }
+
+    const focusedWindow = BrowserWindow.getFocusedWindow();
+    if (focusedWindow) {
+      const backItem = appMenu.getMenuItemById(HistoryItemId.BACK);
+      if (backItem) {
+        backItem.enabled = focusedWindow.webContents.canGoBack();
+      }
+
+      const forwardItem = appMenu.getMenuItemById(HistoryItemId.FORWARD);
+      if (forwardItem) {
+        forwardItem.enabled = focusedWindow.webContents.canGoForward();
+      }
+    }
+  }
 };
 
 
@@ -198,7 +246,8 @@ const updateAppMenu = () => {
  */
 const setHomeUrl = (url) => {
   homeUrl = url;
+  updateHistoryMenu();
 };
 
 
-module.exports = {updateAppMenu, setHomeUrl};
+module.exports = {createAppMenu, setHomeUrl, updateHistoryMenu};

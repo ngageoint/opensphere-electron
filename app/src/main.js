@@ -106,6 +106,14 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     callback({cancel: false, responseHeaders: details.responseHeaders});
   });
 
+  browserWindow.webContents.on('did-navigate', (event) => {
+    appMenu.updateHistoryMenu();
+  });
+
+  browserWindow.webContents.on('did-navigate-in-page', (event) => {
+    appMenu.updateHistoryMenu();
+  });
+
   browserWindow.webContents.on('new-window', (event, url, frameName) => {
     log.debug(`Event [new-window]: ${url}`);
 
@@ -257,7 +265,7 @@ app.on('ready', () => {
   loadConfig();
 
   // Set up the application menu.
-  appMenu.updateAppMenu();
+  appMenu.createAppMenu();
 
   // Launch the application.
   createMainWindow();
@@ -278,7 +286,6 @@ app.on('ready', () => {
     autoUpdater.checkForUpdates();
   }
 });
-
 
 app.on('window-all-closed', () => {
   // On OS X it is common for applications and their menu bar
