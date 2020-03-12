@@ -87,7 +87,7 @@ const onDownloadProgress = (info) => {
  */
 const onUpdateSelection = (index) => {
   if (index === 0) {
-    if (process.env.PORTABLE_EXECUTABLE_DIR) {
+    if (appEnv.isDev || process.env.PORTABLE_EXECUTABLE_DIR) {
       // Load the portable download page if configured. If not, the user shouldn't have been notified of an update.
       if (config.has('electron.releaseUrl')) {
         const releaseUrl = config.get('electron.releaseUrl');
@@ -109,13 +109,13 @@ const onUpdateSelection = (index) => {
 const onUpdateAvailable = (info) => {
   // Prompt that a new version is available when using an installed app, or the release page is configured.
   if (mainWindow && (!process.env.PORTABLE_EXECUTABLE_DIR || config.has('electron.releaseUrl'))) {
-    dialog.showMessageBox(mainWindow, {
+    onUpdateSelection(dialog.showMessageBoxSync(mainWindow, {
       type: 'info',
       title: 'Update Available',
       message: `A new version of ${app.name} (${info.version}) is available. Would you like to download it now?`,
       buttons: ['Yes', 'No'],
       defaultId: 0
-    }, onUpdateSelection);
+    }));
   }
 };
 
@@ -144,13 +144,13 @@ const onUpdateDownloaded = (info) => {
       const message = 'Update has been downloaded. Would you like to install it now, or wait until the next time ' +
           `${app.name} is launched?`;
 
-      dialog.showMessageBox(mainWindow, {
+      onInstallSelection(dialog.showMessageBox(mainWindow, {
         type: 'info',
         title: 'Update Downloaded',
         message: message,
         buttons: ['Install', 'Wait'],
         defaultId: 0
-      }, onInstallSelection);
+      }));
     } else {
       // quitAndInstall doesn't seem to work on macOS, so just notify the user to restart the app.
       dialog.showMessageBox(mainWindow, {

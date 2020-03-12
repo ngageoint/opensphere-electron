@@ -1,16 +1,12 @@
-const path = require('path');
-
-// When running in production, update the location for app configuration. This must be done before config is first
-// required, or app configuration will not be loaded properly.
-if (!require('electron-is-dev')) {
-  process.env.NODE_CONFIG_DIR = path.join(process.resourcesPath, 'config');
-}
+// Initialization steps that need to run prior to loading other modules.
+require('./initapp.js');
 
 // Node Modules
 const config = require('config');
 const fs = require('fs');
 const log = require('electron-log');
 const open = require('open');
+const path = require('path');
 const slash = require('slash');
 
 // Electron Modules
@@ -51,19 +47,6 @@ const discardedHeaders = [
  * @type {BrowserWindow}
  */
 let mainWindow;
-
-/**
- * Load config for the main process. Keys supported:
- *  - electron.appName: Override the application name.
- */
-const loadConfig = () => {
-  if (config.has('electron.appName')) {
-    const appName = config.get('electron.appName');
-    if (appName) {
-      app.name = appName;
-    }
-  }
-};
 
 /**
  * Get the absolute path for a preload script.
@@ -273,8 +256,6 @@ const createMainWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', () => {
-  loadConfig();
-
   // Set up the application menu.
   appMenu.createAppMenu();
 
