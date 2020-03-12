@@ -26,3 +26,6 @@ app/src/preload
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Developer auto update
+dev-app-update.yml
