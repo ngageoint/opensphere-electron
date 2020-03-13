@@ -24,13 +24,6 @@ let updating = false;
 
 
 /**
- * The most recent auto update version found.
- * @type {!Array<string>}
- */
-let ignoredVersions = [];
-
-
-/**
  * File to track the application version for the most recent auto update attempt.
  * @type {string}
  */
@@ -40,8 +33,22 @@ const ignoreFile = '.autoupdateignore';
 /**
  * File to track the application version for the most recent auto update attempt.
  * @type {string}
+ *
+ * @see https://www.electronjs.org/docs/api/app#appgetpathname
  */
-const ignorePath = appEnv.isDev ? path.resolve('.', ignoreFile) : path.join(appEnv.basePath, ignoreFile);
+const ignorePath = appEnv.isDev ?
+    // In development, put the file in opensphere-electron.
+    path.resolve('.', ignoreFile) :
+    // In production, get the Electron userData path for the application.
+    path.join(app.getPath('userData'), ignoreFile);
+
+
+/**
+ * The most recent auto update version found.
+ * @type {!Array<string>}
+ */
+const ignoredVersions = fs.existsSync(ignorePath) ?
+    JSON.parse(fs.readFileSync(ignorePath, 'utf-8')) : [];
 
 
 /**
@@ -87,10 +94,6 @@ const initAutoUpdate = (win) => {
   // Wait for the app to register a certificate handler before checking for updates, so the user will be prompted if
   // the update endpoint requires a certificate.
   ipcMain.once('client-certificate-handler-registered', checkForUpdates);
-
-  if (fs.existsSync(ignorePath)) {
-    ignoredVersions = JSON.parse(fs.readFileSync(ignorePath, 'utf-8'));
-  }
 };
 
 
