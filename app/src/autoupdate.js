@@ -17,6 +17,13 @@ let mainWindow;
 
 
 /**
+ * If the app is currently being updated.
+ * @type {boolean}
+ */
+let updating = false;
+
+
+/**
  * The most recent auto update version found.
  * @type {!Array<string>}
  */
@@ -48,9 +55,14 @@ const hasDevConfig = () => fs.existsSync(path.join(process.cwd(), 'dev-app-updat
 
 /**
  * Check for application updates.
+ * @param {boolean=} clear If the ignored versions list should be cleared.
  */
-const checkForUpdates = () => {
-  // Don't check for updates in a dev environment.
+const checkForUpdates = (clear = false) => {
+  if (clear) {
+    ignoredVersions.length = 0;
+  }
+
+  // Only check for updates in a dev environment if the dev auto update config is present.
   if (!appEnv.isDev || hasDevConfig()) {
     autoUpdater.checkForUpdates();
   }
@@ -115,17 +127,21 @@ const onDownloadProgress = (info) => {
 const onError = (error) => {
   log.error(String(error));
 
-  if (mainWindow) {
+  // If the user requested an update and it fails, display a message so they know something went wrong and the app
+  // won't be updated.
+  if (mainWindow && updating) {
     mainWindow.setProgressBar(-1);
 
     dialog.showMessageBox(mainWindow, {
       type: 'error',
       title: 'Update Failed',
-      message: `The ${app.name} update failed. Please view the log for details.`,
+      message: `Unable to update ${app.name}.`,
       buttons: ['OK'],
       defaultId: 0
     });
   }
+
+  updating = false;
 };
 
 
@@ -160,6 +176,7 @@ const onUpdateAvailable = (info) => {
           }
         }
       } else {
+        updating = true;
         autoUpdater.downloadUpdate();
       }
     } else {
@@ -175,17 +192,17 @@ const onUpdateAvailable = (info) => {
  * @param {UpdateInfo} info The update info.
  */
 const onUpdateDownloaded = (info) => {
+  updating = false;
+
   if (mainWindow) {
     mainWindow.setProgressBar(-1);
 
     if (process.platform !== 'darwin') {
-      const message = 'Update has been downloaded. Would you like to install it now, or wait until the next time ' +
-          `${app.name} is launched?`;
-
       const index = dialog.showMessageBoxSync(mainWindow, {
         type: 'info',
         title: 'Update Downloaded',
-        message: message,
+        message: 'Update has been downloaded. Would you like to install it now, or wait until the next time ' +
+            `${app.name} is launched?`,
         buttons: ['Install', 'Wait'],
         defaultId: 0
       });

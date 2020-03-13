@@ -4,6 +4,10 @@ const isDev = require('electron-is-dev');
 // Electron Modules
 const {app, BrowserWindow, Menu} = require('electron');
 
+// Local Modules
+const {checkForUpdates} = require('./autoupdate.js');
+
+
 /**
  * The application menu.
  */
@@ -150,7 +154,17 @@ const windowMenu = {
   }]
 };
 
-const template = [editMenu, viewMenu, historyMenu, windowMenu];
+const helpMenu = {
+  label: 'Help',
+  submenu: [{
+    label: 'Check for Updates...',
+    click: () => {
+      checkForUpdates(true);
+    }
+  }]
+};
+
+const template = [editMenu, viewMenu, historyMenu, windowMenu, helpMenu];
 
 if (process.platform === 'darwin') {
   const name = app.name;
