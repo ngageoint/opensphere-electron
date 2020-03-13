@@ -171,18 +171,6 @@ const onUpdateAvailable = (info) => {
 
 
 /**
- * Handle user selection from app update install dialog.
- * @param {number} index The selected button index.
- */
-const onInstallSelection = (index) => {
-  if (index === 0) {
-    log.debug('Restarting application to install update.');
-    autoUpdater.quitAndInstall();
-  }
-};
-
-
-/**
  * Handle update downloaded event.
  * @param {UpdateInfo} info The update info.
  */
@@ -194,13 +182,18 @@ const onUpdateDownloaded = (info) => {
       const message = 'Update has been downloaded. Would you like to install it now, or wait until the next time ' +
           `${app.name} is launched?`;
 
-      onInstallSelection(dialog.showMessageBox(mainWindow, {
+      const index = dialog.showMessageBoxSync(mainWindow, {
         type: 'info',
         title: 'Update Downloaded',
         message: message,
         buttons: ['Install', 'Wait'],
         defaultId: 0
-      }));
+      });
+
+      if (index === 0) {
+        log.debug('Restarting application to install update.');
+        autoUpdater.quitAndInstall();
+      }
     } else {
       // quitAndInstall doesn't seem to work on macOS, so just notify the user to restart the app.
       dialog.showMessageBox(mainWindow, {
