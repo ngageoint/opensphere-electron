@@ -189,6 +189,15 @@ const onUpdateAvailable = (info) => {
         }
       } else {
         updating = true;
+
+        dialog.showMessageBox(mainWindow, {
+          type: 'info',
+          title: 'Update Downloading',
+          message: 'Update is being downloaded, and you will be notified when it completes.',
+          buttons: ['OK'],
+          defaultId: 0
+        });
+
         autoUpdater.downloadUpdate();
       }
     } else {
