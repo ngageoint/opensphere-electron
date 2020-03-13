@@ -47,6 +47,7 @@ const initAutoUpdate = (win) => {
   autoUpdater.logger = log;
 
   autoUpdater.on('download-progress', onDownloadProgress);
+  autoUpdater.on('error', onError);
   autoUpdater.on('update-available', onUpdateAvailable);
   autoUpdater.on('update-downloaded', onUpdateDownloaded);
 
@@ -63,6 +64,7 @@ const disposeAutoUpdate = () => {
   mainWindow = null;
 
   autoUpdater.removeListener('download-progress', onDownloadProgress);
+  autoUpdater.removeListener('error', onError);
   autoUpdater.removeListener('update-available', onUpdateAvailable);
   autoUpdater.removeListener('update-downloaded', onUpdateDownloaded);
 
@@ -78,6 +80,23 @@ const onDownloadProgress = (info) => {
   if (mainWindow && info && info.percent != null) {
     mainWindow.setProgressBar(info.percent / 100);
   }
+};
+
+
+/**
+ * Handle update error event.
+ * @param {Error} error The error.
+ */
+const onError = (error) => {
+  log.error(String(error));
+
+  dialog.showMessageBox(mainWindow, {
+    type: 'error',
+    title: 'Update Failed',
+    message: `The ${app.name} update failed. Please view the log for details.`,
+    buttons: ['OK'],
+    defaultId: 0
+  });
 };
 
 
