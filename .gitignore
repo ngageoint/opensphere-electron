@@ -27,5 +27,8 @@ app/src/preload
 ehthumbs.db
 Thumbs.db
 
+# Auto update ignored versions file
+.autoupdateignore
+
 # Developer auto update
 dev-app-update.yml

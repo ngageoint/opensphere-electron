@@ -17,6 +17,27 @@ let mainWindow;
 
 
 /**
+ * The most recent auto update version found.
+ * @type {!Array<string>}
+ */
+let ignoredVersions = [];
+
+
+/**
+ * File to track the application version for the most recent auto update attempt.
+ * @type {string}
+ */
+const ignoreFile = '.autoupdateignore';
+
+
+/**
+ * File to track the application version for the most recent auto update attempt.
+ * @type {string}
+ */
+const ignorePath = appEnv.isDev ? path.resolve('.', ignoreFile) : path.join(appEnv.basePath, ignoreFile);
+
+
+/**
  * If a development auto update config (dev-app-update.yml) is present.
  * @return {boolean}
  *
@@ -54,6 +75,10 @@ const initAutoUpdate = (win) => {
   // Wait for the app to register a certificate handler before checking for updates, so the user will be prompted if
   // the update endpoint requires a certificate.
   ipcMain.once('client-certificate-handler-registered', checkForUpdates);
+
+  if (fs.existsSync(ignorePath)) {
+    ignoredVersions = JSON.parse(fs.readFileSync(ignorePath, 'utf-8'));
+  }
 };
 
 
@@ -90,33 +115,16 @@ const onDownloadProgress = (info) => {
 const onError = (error) => {
   log.error(String(error));
 
-  dialog.showMessageBox(mainWindow, {
-    type: 'error',
-    title: 'Update Failed',
-    message: `The ${app.name} update failed. Please view the log for details.`,
-    buttons: ['OK'],
-    defaultId: 0
-  });
-};
+  if (mainWindow) {
+    mainWindow.setProgressBar(-1);
 
-
-/**
- * Handle update download selection.
- * @param {number} index The selected button index.
- */
-const onUpdateSelection = (index) => {
-  if (index === 0) {
-    if (appEnv.isDev || process.env.PORTABLE_EXECUTABLE_DIR) {
-      // Load the portable download page if configured. If not, the user shouldn't have been notified of an update.
-      if (config.has('electron.releaseUrl')) {
-        const releaseUrl = config.get('electron.releaseUrl');
-        if (releaseUrl) {
-          shell.openExternal(releaseUrl);
-        }
-      }
-    } else {
-      autoUpdater.downloadUpdate();
-    }
+    dialog.showMessageBox(mainWindow, {
+      type: 'error',
+      title: 'Update Failed',
+      message: `The ${app.name} update failed. Please view the log for details.`,
+      buttons: ['OK'],
+      defaultId: 0
+    });
   }
 };
 
@@ -126,15 +134,38 @@ const onUpdateSelection = (index) => {
  * @param {UpdateInfo} info The update info.
  */
 const onUpdateAvailable = (info) => {
+  if (ignoredVersions.indexOf(info.version) > -1) {
+    // User denied updating to this version, skip it.
+    log.info(`Update version ${info.version} previously ignored, skipping auto update.`);
+    return;
+  }
+
   // Prompt that a new version is available when using an installed app, or the release page is configured.
   if (mainWindow && (!process.env.PORTABLE_EXECUTABLE_DIR || config.has('electron.releaseUrl'))) {
-    onUpdateSelection(dialog.showMessageBoxSync(mainWindow, {
+    const index = dialog.showMessageBoxSync(mainWindow, {
       type: 'info',
       title: 'Update Available',
       message: `A new version of ${app.name} (${info.version}) is available. Would you like to download it now?`,
       buttons: ['Yes', 'No'],
       defaultId: 0
-    }));
+    });
+
+    if (index === 0) {
+      if (appEnv.isDev || process.env.PORTABLE_EXECUTABLE_DIR) {
+        // Load the portable download page if configured. If not, the user shouldn't have been notified of an update.
+        if (config.has('electron.releaseUrl')) {
+          const releaseUrl = config.get('electron.releaseUrl');
+          if (releaseUrl) {
+            shell.openExternal(releaseUrl);
+          }
+        }
+      } else {
+        autoUpdater.downloadUpdate();
+      }
+    } else {
+      ignoredVersions.push(info.version);
+      fs.writeFileSync(ignorePath, JSON.stringify(ignoredVersions), 'utf-8');
+    }
   }
 };
 
