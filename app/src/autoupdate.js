@@ -77,6 +77,15 @@ const checkForUpdates = (clear = false) => {
 
 
 /**
+ * Handle IPC client certificate handler registered event.
+ * @param {Event} event The event.
+ */
+const onCertHandlerRegistered = (event) => {
+  checkForUpdates();
+};
+
+
+/**
  * Initialize auto updates.
  * @param {BrowserWindow} win The primary browser window, to show status updates.
  */
@@ -93,7 +102,7 @@ const initAutoUpdate = (win) => {
 
   // Wait for the app to register a certificate handler before checking for updates, so the user will be prompted if
   // the update endpoint requires a certificate.
-  ipcMain.once('client-certificate-handler-registered', checkForUpdates);
+  ipcMain.once('client-certificate-handler-registered', onCertHandlerRegistered);
 };
 
 
@@ -108,7 +117,7 @@ const disposeAutoUpdate = () => {
   autoUpdater.removeListener('update-available', onUpdateAvailable);
   autoUpdater.removeListener('update-downloaded', onUpdateDownloaded);
 
-  ipcMain.removeListener('client-certificate-handler-registered', checkForUpdates);
+  ipcMain.removeListener('client-certificate-handler-registered', onCertHandlerRegistered);
 };
 
 
