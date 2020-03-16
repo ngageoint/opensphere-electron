@@ -15,10 +15,11 @@ const open = require('open');
 const slash = require('slash');
 
 // Electron Modules
-const {app, dialog, globalShortcut, protocol, shell, BrowserWindow, Menu} = require('electron');
+const {app, dialog, globalShortcut, protocol, shell, BrowserWindow} = require('electron');
 
 // Local Modules
 const appEnv = require('./appenv.js');
+const appMenu = require('./appmenu.js');
 const {getAppPath, getAppFromUrl, getAppUrl} = require('./apppath.js');
 const {getUserCertForUrl} = require('./usercerts.js');
 const {getDefaultWebPreferences} = require('./prefs.js');
@@ -105,6 +106,16 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     callback({cancel: false, responseHeaders: details.responseHeaders});
   });
 
+  // Update history menu (forward/back state) on navigation.
+  browserWindow.webContents.on('did-navigate', (event) => {
+    appMenu.updateHistoryMenu();
+  });
+
+  // Update history menu (forward/back state) on page navigation (URL hash change).
+  browserWindow.webContents.on('did-navigate-in-page', (event) => {
+    appMenu.updateHistoryMenu();
+  });
+
   browserWindow.webContents.on('new-window', (event, url, frameName) => {
     log.debug(`Event [new-window]: ${url}`);
 
@@ -139,10 +150,11 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     if (decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(appEnv.basePath)) > -1) {
       const appName = getAppFromUrl(url);
       if (appName) {
-        event.preventDefault();
-
         // Get the actual app URL, appended with any fragment/query string from the requested URL.
         const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
+        log.debug(`Loading app URL: ${appUrl}`);
+
+        event.preventDefault();
         browserWindow.loadURL(appUrl);
       }
     }
@@ -164,6 +176,24 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     }
   });
 
+  browserWindow.webContents.on('will-prevent-unload', (event) => {
+    // The app is attempting to cancel the unload event. Prompt the user to allow this or not.
+    const choice = dialog.showMessageBoxSync(browserWindow, {
+      type: 'info',
+      buttons: ['Leave', 'Stay'],
+      icon: appEnv.iconPath || undefined,
+      title: 'Warning!',
+      message: 'You have unsaved changes on this page. If you navigate away from this page, your ' +
+          'changes will be lost.',
+      defaultId: 0,
+      cancelId: 1
+    });
+
+    if (choice === 0) {
+      event.preventDefault();
+    }
+  });
+
   return browserWindow;
 };
 
@@ -178,6 +208,8 @@ const createAppWindow = (appName, url, parentWindow) => {
   const appUrl = getAppUrl(appName, appEnv.basePath) + url.replace(/^[^#?]+/, '');
 
   if (parentWindow && parentWindow.webContents) {
+    log.debug(`Launching app ${appName} with URL ${appUrl}`);
+
     const appWindow = createBrowserWindow(parentWindow.webContents.getWebPreferences(), parentWindow);
     appWindow.loadURL(appUrl);
   }
@@ -203,6 +235,7 @@ const createMainWindow = () => {
 
   // Load the app from the file system.
   const appUrl = getAppUrl(appEnv.baseApp, appEnv.basePath);
+  appMenu.setHomeUrl(appUrl);
 
   log.info('loading', appUrl);
   mainWindow.loadURL(appUrl);
@@ -234,9 +267,7 @@ app.on('ready', () => {
   loadConfig();
 
   // Set up the application menu.
-  const template = require('./appmenu.js');
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
+  appMenu.createAppMenu();
 
   // Launch the application.
   createMainWindow();
@@ -257,7 +288,6 @@ app.on('ready', () => {
     autoUpdater.checkForUpdates();
   }
 });
-
 
 app.on('window-all-closed', () => {
   // On OS X it is common for applications and their menu bar

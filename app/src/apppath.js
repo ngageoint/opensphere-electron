@@ -1,7 +1,7 @@
 // Node Modules
 const config = require('config');
 const path = require('path');
-const url = require('url');
+const {URL, format} = require('url');
 
 // Local Modules
 const appEnv = require('./appenv.js');
@@ -45,7 +45,7 @@ const getAppPath = (appName, basePath) => {
  */
 const getAppUrl = (appName, baseUrl) => {
   const appPath = getAppPath(appName, baseUrl);
-  return url.format({
+  return format({
     pathname: path.join(appPath, 'index.html'),
     protocol: 'file:',
     slashes: true
@@ -62,9 +62,13 @@ const getAppFromUrl = (url) => {
   let matchedApp = null;
   if (config.has('electron.apps')) {
     const apps = config.get('electron.apps');
-    for (const appName in apps) {
-      if (url.indexOf(appName) != -1 && (!matchedApp || matchedApp.length < appName.length)) {
-        matchedApp = appName;
+
+    // Try matching an app path, starting from the end of the URL pathname
+    const parts = new URL(url).pathname.split('/').reverse();
+    for (const part of parts) {
+      if (apps.hasOwnProperty(part)) {
+        matchedApp = part;
+        break;
       }
     }
   }

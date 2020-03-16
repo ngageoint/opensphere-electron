@@ -32,6 +32,22 @@ const baseApp = config.has('electron.baseApp') ? config.get('electron.baseApp') 
 
 
 /**
+ * The base path to the application icon.
+ * @type {string}
+ */
+const iconBasePath = isDev ?
+    (config.has('electron.iconDev') ? config.get('electron.iconDev') : '') :
+    (config.has('electron.icon') ? config.get('electron.icon') : '');
+
+
+/**
+ * The application icon.
+ * @type {string}
+ */
+const iconPath = iconBasePath ? path.resolve(basePath, iconBasePath) : '';
+
+
+/**
  * Location of preload scripts.
  * @type {string}
  */
@@ -53,4 +69,4 @@ const initEnvVars = (osPath) => {
 };
 
 
-module.exports = {baseApp, basePath, isDev, isDebug, initEnvVars, preloadDir};
+module.exports = {baseApp, basePath, iconPath, isDev, isDebug, initEnvVars, preloadDir};
