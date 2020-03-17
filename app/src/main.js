@@ -1,26 +1,22 @@
-const path = require('path');
-
-// When running in production, update the location for app configuration. This must be done before config is first
-// required, or app configuration will not be loaded properly.
-if (!require('electron-is-dev')) {
-  process.env.NODE_CONFIG_DIR = path.join(process.resourcesPath, 'config');
-}
+// Initialization steps that need to run prior to loading other modules.
+require('./initapp.js');
 
 // Node Modules
 const config = require('config');
 const fs = require('fs');
 const log = require('electron-log');
-const {autoUpdater} = require('electron-updater');
 const open = require('open');
+const path = require('path');
 const slash = require('slash');
 
 // Electron Modules
-const {app, dialog, globalShortcut, protocol, shell, BrowserWindow} = require('electron');
+const {app, dialog, globalShortcut, protocol, BrowserWindow} = require('electron');
 
 // Local Modules
 const appEnv = require('./appenv.js');
 const appMenu = require('./appmenu.js');
 const {getAppPath, getAppFromUrl, getAppUrl} = require('./apppath.js');
+const {disposeAutoUpdate, initAutoUpdate} = require('./autoupdate.js');
 const {getUserCertForUrl} = require('./usercerts.js');
 const {getDefaultWebPreferences} = require('./prefs.js');
 
@@ -45,22 +41,12 @@ const discardedHeaders = [
   'x-xss-protection'
 ];
 
-// Keep a global reference of the window object, if you don't, the window will
-// be closed automatically when the JavaScript object is garbage collected.
-let mainWindow;
-
 /**
- * Load config for the main process. Keys supported:
- *  - electron.appName: Override the application name.
+ * Keep a global reference of the window object, if you don't, the window will
+ * be closed automatically when the JavaScript object is garbage collected.
+ * @type {BrowserWindow}
  */
-const loadConfig = () => {
-  if (config.has('electron.appName')) {
-    const appName = config.get('electron.appName');
-    if (appName) {
-      app.name = appName;
-    }
-  }
-};
+let mainWindow;
 
 /**
  * Get the absolute path for a preload script.
@@ -73,9 +59,9 @@ const getPreloadPath = (script) => {
 
 /**
  * Create a new browser window.
- * @param {Electron.WebPreferences} webPreferences The Electron web preferences.
- * @param {Electron.BrowserWindow} parentWindow The opening browser window.
- * @return {Electron.BrowserWindow}
+ * @param {WebPreferences} webPreferences The Electron web preferences.
+ * @param {BrowserWindow} parentWindow The opening browser window.
+ * @return {BrowserWindow}
  */
 const createBrowserWindow = (webPreferences, parentWindow) => {
   // Create the browser window.
@@ -160,22 +146,6 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     }
   });
 
-  browserWindow.webContents.on('select-client-certificate', (event, url, list, callback) => {
-    // Let Electron handle selection if the user doesn't have multiple certificates.
-    if (list && list.length > 1) {
-      event.preventDefault();
-
-      getUserCertForUrl(url, list, browserWindow.webContents).then((cert) => {
-        callback(cert);
-      }, (err) => {
-        // This intentionally doesn't call the callback, because Electron will remember the decision. If the app was
-        // refreshed, we want Electron to try selecting a cert again when the app loads.
-        const reason = err && err.message || 'Unspecified reason.';
-        log.error(`Client certificate selection failed: ${reason}`);
-      });
-    }
-  });
-
   browserWindow.webContents.on('will-prevent-unload', (event) => {
     // The app is attempting to cancel the unload event. Prompt the user to allow this or not.
     const choice = dialog.showMessageBoxSync(browserWindow, {
@@ -198,10 +168,28 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
 };
 
 /**
+ * Get a client certificate for the provided URL.
+ * @param {string} url The URL.
+ * @param {!Array<!Certificate>} list Available user certificates.
+ * @param {function(Certificate)} callback The callback to call on certificate selection.
+ * @param {WebContents} webContents The WebContents instance requesting a certificate.
+ */
+const getClientCertificate = (url, list, callback, webContents) => {
+  getUserCertForUrl(url, list, webContents).then((cert) => {
+    callback(cert);
+  }, (err) => {
+    // This intentionally doesn't call the callback, because Electron will remember the decision. If the app was
+    // refreshed, we want Electron to try selecting a cert again when the app loads.
+    const reason = err && err.message || 'Unspecified reason.';
+    log.error(`Client certificate selection failed: ${reason}`);
+  });
+};
+
+/**
  * Open an application browser window.
  * @param {string} appName The app name.
  * @param {string} url The app URL.
- * @param {Electron.BrowserWindow} parentWindow The opening browser window.
+ * @param {BrowserWindow} parentWindow The opening browser window.
  */
 const createAppWindow = (appName, url, parentWindow) => {
   // Get the actual app URL, appended with any fragment/query string from the requested URL.
@@ -233,6 +221,9 @@ const createMainWindow = () => {
   // Create the browser window.
   mainWindow = createBrowserWindow(webPreferences);
 
+  // Initialize auto update.
+  initAutoUpdate(mainWindow);
+
   // Load the app from the file system.
   const appUrl = getAppUrl(appEnv.baseApp, appEnv.basePath);
   appMenu.setHomeUrl(appUrl);
@@ -252,6 +243,7 @@ const createMainWindow = () => {
   mainWindow.on('closed', () => {
     // Clean up listeners.
     mainWindow.removeAllListeners();
+    disposeAutoUpdate();
 
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
@@ -264,8 +256,6 @@ const createMainWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', () => {
-  loadConfig();
-
   // Set up the application menu.
   appMenu.createAppMenu();
 
@@ -281,11 +271,14 @@ app.on('ready', () => {
         focusedWindow.toggleDevTools();
       }
     });
+  }
+});
 
-    // Check for updates, in production only.
-    autoUpdater.autoDownload = false;
-    autoUpdater.logger = log;
-    autoUpdater.checkForUpdates();
+app.on('select-client-certificate', (event, webContents, url, list, callback) => {
+  // Let Electron handle selection if the user doesn't have multiple certificates.
+  if (list && list.length > 1) {
+    event.preventDefault();
+    getClientCertificate(url, list, callback, webContents);
   }
 });
 
@@ -323,97 +316,3 @@ app.on('web-contents-created', (event, contents) => {
     }
   });
 });
-
-/**
- * Handle update download progress event.
- * @param {DownloadProgress} info The download progress info.
- */
-const onDownloadProgress = (info) => {
-  if (mainWindow && info && info.percent != null) {
-    mainWindow.setProgressBar(info.percent / 100);
-  }
-};
-
-/**
- * Handle update download selection.
- * @param {number} index The selected button index.
- */
-const onUpdateSelection = (index) => {
-  if (index === 0) {
-    if (process.env.PORTABLE_EXECUTABLE_DIR) {
-      // Load the portable download page if configured. If not, the user shouldn't have been notified of an update.
-      if (config.has('electron.releaseUrl')) {
-        const releaseUrl = config.get('electron.releaseUrl');
-        if (releaseUrl) {
-          shell.openExternal(releaseUrl);
-        }
-      }
-    } else {
-      autoUpdater.downloadUpdate();
-    }
-  }
-};
-
-/**
- * Handle update available event.
- * @param {UpdateInfo} info The update info.
- */
-const onUpdateAvailable = (info) => {
-  // Prompt that a new version is available when using an installed app, or the release page is configured.
-  if (!process.env.PORTABLE_EXECUTABLE_DIR || config.has('electron.releaseUrl')) {
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: 'Update Available',
-      message: `A new version of ${app.name} (${info.version}) is available. Would you like to download it now?`,
-      buttons: ['Yes', 'No'],
-      defaultId: 0
-    }, onUpdateSelection);
-  }
-};
-
-/**
- * Handle user selection from app update install dialog.
- * @param {number} index The selected button index.
- */
-const onInstallSelection = (index) => {
-  if (index === 0) {
-    log.debug('Restarting application to install update.');
-    autoUpdater.quitAndInstall();
-  }
-};
-
-/**
- * Handle update downloaded event.
- * @param {UpdateInfo} info The update info.
- */
-const onUpdateDownloaded = (info) => {
-  if (mainWindow) {
-    mainWindow.setProgressBar(-1);
-  }
-
-  if (process.platform !== 'darwin') {
-    const message = 'Update has been downloaded. Would you like to install it now, or wait until the next time ' +
-        `${app.name} is launched?`;
-
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: 'Update Downloaded',
-      message: message,
-      buttons: ['Install', 'Wait'],
-      defaultId: 0
-    }, onInstallSelection);
-  } else {
-    // quitAndInstall doesn't seem to work on macOS, so just notify the user to restart the app.
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: 'Update Downloaded',
-      message: `Update has been downloaded, and will be applied the next time ${app.name} is launched.`,
-      buttons: ['OK'],
-      defaultId: 0
-    });
-  }
-};
-
-autoUpdater.on('download-progress', onDownloadProgress);
-autoUpdater.on('update-available', onUpdateAvailable);
-autoUpdater.on('update-downloaded', onUpdateDownloaded);
