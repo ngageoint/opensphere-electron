@@ -144,16 +144,50 @@ const onError = (error) => {
   if (mainWindow && updating) {
     mainWindow.setProgressBar(-1);
 
-    dialog.showMessageBox(mainWindow, {
-      type: 'error',
-      title: 'Update Failed',
-      message: `Unable to update ${app.name}.`,
-      buttons: ['OK'],
-      defaultId: 0
-    });
+    if (hasReleaseUrl()) {
+      const index = dialog.showMessageBoxSync(mainWindow, {
+        type: 'error',
+        title: 'Update Failed',
+        message: `Unable to update ${app.name}. Would you like to download the new version manually?`,
+        buttons: ['Yes', 'No'],
+        defaultId: 0
+      });
+
+      if (index === 0) {
+        openReleaseUrl();
+      }
+    } else {
+      dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        title: 'Update Failed',
+        message: `Unable to update ${app.name}.`,
+        buttons: ['OK'],
+        defaultId: 0
+      });
+    }
   }
 
   updating = false;
+};
+
+
+/**
+ * If the application has a release URL configured.
+ * @return {boolean}
+ */
+const hasReleaseUrl = () => config.has('electron.releaseUrl');
+
+
+/**
+ * Launch the release URL in a browser, if configured.
+ */
+const openReleaseUrl = () => {
+  if (hasReleaseUrl()) {
+    const releaseUrl = config.get('electron.releaseUrl');
+    if (releaseUrl) {
+      shell.openExternal(releaseUrl);
+    }
+  }
 };
 
 
@@ -180,13 +214,8 @@ const onUpdateAvailable = (info) => {
 
     if (index === 0) {
       if (appEnv.isDev || process.env.PORTABLE_EXECUTABLE_DIR) {
-        // Load the portable download page if configured. If not, the user shouldn't have been notified of an update.
-        if (config.has('electron.releaseUrl')) {
-          const releaseUrl = config.get('electron.releaseUrl');
-          if (releaseUrl) {
-            shell.openExternal(releaseUrl);
-          }
-        }
+        // Dev/portable apps can't be updated automatically, so open the release page.
+        openReleaseUrl();
       } else {
         updating = true;
 
