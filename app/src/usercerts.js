@@ -1,4 +1,6 @@
 const Promise = require('bluebird');
+const log = require('electron-log');
+
 const {ipcMain} = require('electron');
 
 
@@ -7,6 +9,25 @@ const {ipcMain} = require('electron');
  * @type {Object<string, !Promise<!Electron.Certificate>>}
  */
 const promises = {};
+
+
+/**
+ * Get a client certificate for the provided URL.
+ * @param {string} url The URL.
+ * @param {!Array<!Certificate>} list Available user certificates.
+ * @param {function(Certificate)} callback The callback to call on certificate selection.
+ * @param {WebContents} webContents The WebContents instance requesting a certificate.
+ */
+const getClientCertificate = (url, list, callback, webContents) => {
+  getUserCertForUrl(url, list, webContents).then((cert) => {
+    callback(cert);
+  }, (err) => {
+    // This intentionally doesn't call the callback, because Electron will remember the decision. If the app was
+    // refreshed, we want Electron to try selecting a cert again when the app loads.
+    const reason = err && err.message || 'Unspecified reason.';
+    log.error(`Client certificate selection failed: ${reason}`);
+  });
+};
 
 
 /**
@@ -54,4 +75,4 @@ const getUserCertForUrl = (url, list, webContents) => {
 };
 
 
-module.exports = {getUserCertForUrl};
+module.exports = {getClientCertificate};
