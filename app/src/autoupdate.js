@@ -1,19 +1,16 @@
+// Node Modules
 const config = require('config');
 const fs = require('fs');
 const path = require('path');
 const log = require('electron-log');
-
-const {app, dialog, ipcMain, shell} = require('electron');
 const {autoUpdater} = require('electron-updater');
 
+// Electron Modules
+const {app, dialog, ipcMain, BrowserWindow} = require('electron');
+
+// Local Modules
 const appEnv = require('./appenv.js');
-
-
-/**
- * The main window object. Used to display status updates.
- * @type {BrowserWindow}
- */
-let mainWindow;
+const {openExternal} = require('./appnav.js');
 
 
 /**
@@ -62,15 +59,17 @@ const hasDevConfig = () => fs.existsSync(path.join(process.cwd(), 'dev-app-updat
 
 /**
  * Check for application updates.
- * @param {boolean=} clear If the ignored versions list should be cleared.
+ * @param {boolean=} user If the check was user-initiated.
  */
-const checkForUpdates = (clear = false) => {
-  if (clear) {
+const checkForUpdates = (user = false) => {
+  // When user initiated, clear the ignored versions cache and set the flag.
+  if (user) {
     ignoredVersions.length = 0;
+    updating = true;
   }
 
-  // Only check for updates in a dev environment if the dev auto update config is present.
-  if (!appEnv.isDev || hasDevConfig()) {
+  // Only check for updates in a dev environment if user-initiated or the dev auto update config is present.
+  if (user || !appEnv.isDev || hasDevConfig()) {
     autoUpdater.checkForUpdates();
   }
 };
@@ -87,17 +86,15 @@ const onCertHandlerRegistered = (event) => {
 
 /**
  * Initialize auto updates.
- * @param {BrowserWindow} win The primary browser window, to show status updates.
  */
-const initAutoUpdate = (win) => {
-  mainWindow = win;
-
+const initAutoUpdate = () => {
   autoUpdater.autoDownload = false;
   autoUpdater.logger = log;
 
   autoUpdater.on('download-progress', onDownloadProgress);
   autoUpdater.on('error', onError);
   autoUpdater.on('update-available', onUpdateAvailable);
+  autoUpdater.on('update-not-available', onUpdateNotAvailable);
   autoUpdater.on('update-downloaded', onUpdateDownloaded);
 
   // Wait for the app to register a certificate handler before checking for updates, so the user will be prompted if
@@ -110,11 +107,10 @@ const initAutoUpdate = (win) => {
  * Dispose auto updates.
  */
 const disposeAutoUpdate = () => {
-  mainWindow = null;
-
   autoUpdater.removeListener('download-progress', onDownloadProgress);
   autoUpdater.removeListener('error', onError);
   autoUpdater.removeListener('update-available', onUpdateAvailable);
+  autoUpdater.removeListener('update-not-available', onUpdateNotAvailable);
   autoUpdater.removeListener('update-downloaded', onUpdateDownloaded);
 
   ipcMain.removeListener('client-certificate-handler-registered', onCertHandlerRegistered);
@@ -126,10 +122,27 @@ const disposeAutoUpdate = () => {
  * @param {DownloadProgress} info The download progress info.
  */
 const onDownloadProgress = (info) => {
-  if (mainWindow && info && info.percent != null) {
-    mainWindow.setProgressBar(info.percent / 100);
+  if (info && info.percent != null) {
+    updateProgress(info.percent / 100);
   }
 };
+
+
+/**
+ * Update the download progress bar for all windows.
+ * @param {number} value The progress value.
+ */
+const updateProgress = (value) => {
+  BrowserWindow.getAllWindows().forEach((win) => win.setProgressBar(value));
+};
+
+
+/**
+ * Get the target window for providing auto update details to the user. This will be the focused window, or the first
+ * available if no window has focus.
+ * @return {BrowserWindow|null} The target window.
+ */
+const getTargetWindow = () => BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0] || null;
 
 
 /**
@@ -141,29 +154,32 @@ const onError = (error) => {
 
   // If the user requested an update and it fails, display a message so they know something went wrong and the app
   // won't be updated.
-  if (mainWindow && updating) {
-    mainWindow.setProgressBar(-1);
+  if (updating) {
+    updateProgress(-1);
 
-    if (hasReleaseUrl()) {
-      const index = dialog.showMessageBoxSync(mainWindow, {
-        type: 'error',
-        title: 'Update Failed',
-        message: `Unable to update ${app.name}. Would you like to download the new version manually?`,
-        buttons: ['Yes', 'No'],
-        defaultId: 0
-      });
+    const targetWindow = getTargetWindow();
+    if (targetWindow) {
+      if (hasReleaseUrl()) {
+        const index = dialog.showMessageBoxSync(targetWindow, {
+          type: 'error',
+          title: 'Update Failed',
+          message: `Unable to update ${app.name}. Would you like to download the new version manually?`,
+          buttons: ['Yes', 'No'],
+          defaultId: 0
+        });
 
-      if (index === 0) {
-        openReleaseUrl();
+        if (index === 0) {
+          openReleaseUrl();
+        }
+      } else {
+        dialog.showMessageBox(targetWindow, {
+          type: 'error',
+          title: 'Update Failed',
+          message: `Unable to update ${app.name}.`,
+          buttons: ['OK'],
+          defaultId: 0
+        });
       }
-    } else {
-      dialog.showMessageBox(mainWindow, {
-        type: 'error',
-        title: 'Update Failed',
-        message: `Unable to update ${app.name}.`,
-        buttons: ['OK'],
-        defaultId: 0
-      });
     }
   }
 
@@ -185,7 +201,29 @@ const openReleaseUrl = () => {
   if (hasReleaseUrl()) {
     const releaseUrl = config.get('electron.releaseUrl');
     if (releaseUrl) {
-      shell.openExternal(releaseUrl);
+      openExternal(releaseUrl);
+    }
+  }
+};
+
+
+/**
+ * Handle update not available event.
+ * @param {UpdateInfo} info The update info.
+ */
+const onUpdateNotAvailable = (info) => {
+  if (updating) {
+    updating = false;
+
+    const targetWindow = getTargetWindow();
+    if (targetWindow) {
+      dialog.showMessageBox(targetWindow, {
+        type: 'info',
+        title: 'Update Not Available',
+        message: `${app.name} is up to date.`,
+        buttons: ['OK'],
+        defaultId: 0
+      });
     }
   }
 };
@@ -203,8 +241,9 @@ const onUpdateAvailable = (info) => {
   }
 
   // Prompt that a new version is available when using an installed app, or the release page is configured.
-  if (mainWindow && (!process.env.PORTABLE_EXECUTABLE_DIR || config.has('electron.releaseUrl'))) {
-    const index = dialog.showMessageBoxSync(mainWindow, {
+  const targetWindow = getTargetWindow();
+  if (targetWindow && (!process.env.PORTABLE_EXECUTABLE_DIR || config.has('electron.releaseUrl'))) {
+    const index = dialog.showMessageBoxSync(targetWindow, {
       type: 'info',
       title: 'Update Available',
       message: `A new version of ${app.name} (${info.version}) is available. Would you like to download it now?`,
@@ -219,7 +258,7 @@ const onUpdateAvailable = (info) => {
       } else {
         updating = true;
 
-        dialog.showMessageBox(mainWindow, {
+        dialog.showMessageBox(targetWindow, {
           type: 'info',
           title: 'Update Downloading',
           message: 'Update is being downloaded, and you will be notified when it completes.',
@@ -244,11 +283,12 @@ const onUpdateAvailable = (info) => {
 const onUpdateDownloaded = (info) => {
   updating = false;
 
-  if (mainWindow) {
-    mainWindow.setProgressBar(-1);
+  const targetWindow = getTargetWindow();
+  if (targetWindow) {
+    updateProgress(-1);
 
     if (process.platform !== 'darwin') {
-      const index = dialog.showMessageBoxSync(mainWindow, {
+      const index = dialog.showMessageBoxSync(targetWindow, {
         type: 'info',
         title: 'Update Downloaded',
         message: 'Update has been downloaded. Would you like to install it now, or wait until the next time ' +
@@ -263,7 +303,7 @@ const onUpdateDownloaded = (info) => {
       }
     } else {
       // quitAndInstall doesn't seem to work on macOS, so just notify the user to restart the app.
-      dialog.showMessageBox(mainWindow, {
+      dialog.showMessageBox(targetWindow, {
         type: 'info',
         title: 'Update Downloaded',
         message: `Update has been downloaded, and will be applied the next time ${app.name} is launched.`,
