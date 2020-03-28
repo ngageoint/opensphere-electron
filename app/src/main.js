@@ -14,6 +14,7 @@ const appMenu = require('./appmenu.js');
 const {createBrowserWindow} = require('./appnav.js');
 const {getAppPath, getAppUrl} = require('./apppath.js');
 const {disposeAutoUpdate, initAutoUpdate} = require('./autoupdate.js');
+const cookies = require('./cookies.js');
 const {getClientCertificate} = require('./usercerts.js');
 const {getDefaultWebPreferences} = require('./prefs.js');
 
@@ -86,6 +87,9 @@ const createMainWindow = () => {
 app.on('ready', () => {
   // Set up the application menu.
   appMenu.createAppMenu();
+
+  // Set up cookie IPC handlers.
+  cookies.initHandlers();
 
   // Launch the application.
   createMainWindow();
