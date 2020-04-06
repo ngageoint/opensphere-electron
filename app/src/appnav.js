@@ -88,7 +88,9 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     //      user isn't bothered by that nonsense in a desktop app. As soon as you
     //      treat Electron as a generic browser, that tears a hole in everything.
     const decodedUrl = decodeURIComponent(url);
-    if (decodedUrl.indexOf('about:blank') === -1 &&
+    if (appEnv.isInternalLink(decodedUrl)) {
+      log.debug('Opening window internally.');
+    } else if (decodedUrl.indexOf('about:blank') === -1 &&
         !(decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(appEnv.basePath)) > -1)) {
       event.preventDefault();
       openExternal(url);

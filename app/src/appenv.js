@@ -55,6 +55,23 @@ const preloadDir = path.join(__dirname, 'preload');
 
 
 /**
+ * Internal link patterns.
+ * @type {Array<!RegExp>}
+ */
+const internalLinkPatterns = config.has('electron.internalLinks') ?
+    config.get('electron.internalLinks').map((pattern) => new RegExp(pattern)) : null;
+
+
+/**
+ * If the URL is considered an internal link.
+ * @param {string} url The URL.
+ * @return {boolean}
+ */
+const isInternalLink = (url) => internalLinkPatterns ?
+    internalLinkPatterns.some((pattern) => pattern.test(url)) : false;
+
+
+/**
  * Initialize environment variables based on the current environment.
  * @param {string} osPath Base path to opensphere.
  */
@@ -69,4 +86,4 @@ const initEnvVars = (osPath) => {
 };
 
 
-module.exports = {baseApp, basePath, iconPath, isDev, isDebug, initEnvVars, preloadDir};
+module.exports = {baseApp, basePath, iconPath, isDev, isDebug, isInternalLink, initEnvVars, preloadDir};
