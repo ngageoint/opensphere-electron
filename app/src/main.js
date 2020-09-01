@@ -81,7 +81,10 @@ const createMainWindow = () => {
   });
 };
 
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=32768');
+// Divide by half system memory and convert to MB.
+let appMemory = process.getSystemMemoryInfo().total / 2048 | 0;
+log.info("Setting applications maximum memory to " + appMemory + " MB.");
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + appMemory);
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
