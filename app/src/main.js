@@ -81,6 +81,8 @@ const createMainWindow = () => {
   });
 };
 
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=32768');
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
