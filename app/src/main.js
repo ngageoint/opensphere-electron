@@ -82,8 +82,8 @@ const createMainWindow = () => {
 };
 
 // Divide by half system memory and convert to MB.
-let appMemory = process.getSystemMemoryInfo().total / 2048 | 0;
-log.info("Setting applications maximum memory to " + appMemory + " MB.");
+const appMemory = process.getSystemMemoryInfo().total / 2048 | 0;
+log.info('Setting applications maximum memory to ' + appMemory + ' MB.');
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + appMemory);
 
 // This method will be called when Electron has finished
