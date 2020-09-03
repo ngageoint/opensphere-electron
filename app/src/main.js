@@ -17,6 +17,7 @@ const {disposeAutoUpdate, initAutoUpdate} = require('./autoupdate.js');
 const cookies = require('./cookies.js');
 const {getClientCertificate} = require('./usercerts.js');
 const {getDefaultWebPreferences} = require('./prefs.js');
+const {getMaximumMemory} = require('./memconfig.js');
 
 // Configure logger.
 log.transports.file.level = 'debug';
@@ -38,9 +39,6 @@ process.env.OPENSPHERE_PATH = getAppPath('opensphere', appEnv.basePath);
  * @type {BrowserWindow}
  */
 let mainWindow;
-
-// Divide by half system memory and convert to MB.
-const appMemory = process.getSystemMemoryInfo().total / 2048 | 0;
 
 /**
  * Create the main application window.
@@ -84,8 +82,9 @@ const createMainWindow = () => {
   });
 };
 
-log.info('Setting applications maximum memory to ' + appMemory + ' MB.');
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + appMemory);
+const maxMemory = getMaximumMemory();
+log.info('Setting applications maximum memory to ' + maxMemory + ' MB.');
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + maxMemory);
 
 global.sharedObj = {prop1: null};
 
