@@ -39,6 +39,9 @@ process.env.OPENSPHERE_PATH = getAppPath('opensphere', appEnv.basePath);
  */
 let mainWindow;
 
+// Divide by half system memory and convert to MB.
+const appMemory = process.getSystemMemoryInfo().total / 2048 | 0;
+
 /**
  * Create the main application window.
  */
@@ -81,10 +84,10 @@ const createMainWindow = () => {
   });
 };
 
-// Divide by half system memory and convert to MB.
-const appMemory = process.getSystemMemoryInfo().total / 2048 | 0;
 log.info('Setting applications maximum memory to ' + appMemory + ' MB.');
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + appMemory);
+
+global.sharedObj = {prop1: null};
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
