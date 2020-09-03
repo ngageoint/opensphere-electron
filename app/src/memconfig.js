@@ -15,7 +15,10 @@ const getMaximumMemory = () => {
   const userDataPath = (electron.app || electron.remote.app).getPath('userData');
   const memoryConfigPath = userDataPath + memoryConfigFileName;
   if (fs.existsSync(memoryConfigPath)) {
-    appMemory = parseInt(fs.readFileSync(memoryConfigPath));
+    const parsedMem = parseInt(fs.readFileSync(memoryConfigPath));
+    if (parsedMem >= 512) {
+      appMemory = parsedMem;
+    }
   }
 
   return appMemory;
