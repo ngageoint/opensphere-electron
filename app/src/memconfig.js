@@ -10,7 +10,7 @@ const memoryConfigFileName = '/maxmemory.txt';
  */
 const getMaximumMemory = () => {
   // Divide by half system memory and convert to MB.
-  let appMemory = process.getSystemMemoryInfo().total / 2048 | 0;
+  let appMemory = getSystemMemory() / 2 | 0;
 
   const userDataPath = (electron.app || electron.remote.app).getPath('userData');
   const memoryConfigPath = userDataPath + memoryConfigFileName;
@@ -24,6 +24,14 @@ const getMaximumMemory = () => {
   return appMemory;
 };
 
+/**
+ * Gets the total available memory for the system.
+ * @return {Number} The total available memory for the system in MB.
+ */
+const getSystemMemory = () => {
+  // Cconvert to MB.
+  return process.getSystemMemoryInfo().total / 1024 | 0;
+};
 
 /**
  * Sets the maximum memory for the system.
@@ -37,4 +45,4 @@ const setMaximumMemory = (maxMemory) => {
   log.info('Memory configuration changed saved to ' + memoryConfigPath);
 };
 
-module.exports = {getMaximumMemory, setMaximumMemory};
+module.exports = {getMaximumMemory, getSystemMemory, setMaximumMemory};

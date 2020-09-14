@@ -86,8 +86,6 @@ const maxMemory = getMaximumMemory();
 log.info('Setting applications maximum memory to ' + maxMemory + ' MB.');
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + maxMemory);
 
-global.sharedObj = {prop1: null};
-
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
