@@ -1,12 +1,7 @@
-const electron = require('electron');
+const {app} = require('electron');
 const log = require('electron-log');
 
 const appEnv = require('./appenv.js');
-
-/**
- * The electron app.
- */
-const app = (electron.app || electron.remote.app);
 
 /**
  * Restarts the application when not in dev mode, when in dev mode just quits the application and logs to the developer
