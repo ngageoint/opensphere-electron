@@ -1,19 +1,40 @@
 const fs = require('fs');
 const electron = require('electron');
 const log = require('electron-log');
+const path = require('path');
 
-const memoryConfigFileName = '/maxmemory.txt';
+/**
+ * The file name containing memory configuration data.
+ */
+const memoryConfigFileName = '.maxmemory';
+
+/**
+ * The User's data directory.
+ */
+const userDataPath = (electron.app || electron.remote.app).getPath('userData');
+
+/**
+ * The full path including filename to where the memory configuration file is located.
+ */
+const memoryConfigPath = path.join(userDataPath, memoryConfigFileName);
+
+/**
+ * The total available RAM in MB.
+ */
+const systemMemory = process.getSystemMemoryInfo().total / 1024 | 0;
+
+/**
+ * Default to using half of the system's RAM.
+ */
+const defaultAppMemory = systemMemory / 2 | 0;
 
 /**
  * Gets the configured maximum memory for the system.
  * @return {Number} The maximum memory for the system in MB.
  */
 const getMaximumMemory = () => {
-  // Divide by half system memory and convert to MB.
-  let appMemory = getSystemMemory() / 2 | 0;
+  let appMemory = defaultAppMemory;
 
-  const userDataPath = (electron.app || electron.remote.app).getPath('userData');
-  const memoryConfigPath = userDataPath + memoryConfigFileName;
   if (fs.existsSync(memoryConfigPath)) {
     const parsedMem = parseInt(fs.readFileSync(memoryConfigPath));
     if (parsedMem >= 512) {
@@ -29,8 +50,7 @@ const getMaximumMemory = () => {
  * @return {Number} The total available memory for the system in MB.
  */
 const getSystemMemory = () => {
-  // Cconvert to MB.
-  return process.getSystemMemoryInfo().total / 1024 | 0;
+  return systemMemory;
 };
 
 /**
@@ -39,8 +59,6 @@ const getSystemMemory = () => {
  */
 const setMaximumMemory = (maxMemory) => {
   log.info('Changing applications maximum memory to ' + maxMemory + ' MB.');
-  const userDataPath = (electron.app || electron.remote.app).getPath('userData');
-  const memoryConfigPath = userDataPath + memoryConfigFileName;
   fs.writeFileSync(memoryConfigPath, maxMemory, 'utf-8');
   log.info('Memory configuration changed saved to ' + memoryConfigPath);
 };
