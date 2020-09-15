@@ -6,7 +6,7 @@ const config = require('config');
 const log = require('electron-log');
 
 // Electron Modules
-const {app, protocol, BrowserWindow} = require('electron');
+const {app, protocol, BrowserWindow, ipcMain} = require('electron');
 
 // Local Modules
 const appEnv = require('./appenv.js');
@@ -18,6 +18,7 @@ const cookies = require('./cookies.js');
 const {getClientCertificate} = require('./usercerts.js');
 const {getDefaultWebPreferences} = require('./prefs.js');
 const {getMaximumMemory} = require('./memconfig.js');
+const {relaunch} = require('./relauncher.js');
 
 // Configure logger.
 log.transports.file.level = 'debug';
@@ -148,4 +149,8 @@ app.on('web-contents-created', (event, contents) => {
       event.preventDefault();
     }
   });
+});
+
+ipcMain.on('restart', (event, value) => {
+  relaunch();
 });
