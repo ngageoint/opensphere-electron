@@ -6,7 +6,7 @@ const config = require('config');
 const log = require('electron-log');
 
 // Electron Modules
-const {app, protocol, BrowserWindow} = require('electron');
+const {app, protocol, BrowserWindow, ipcMain} = require('electron');
 
 // Local Modules
 const appEnv = require('./appenv.js');
@@ -17,6 +17,8 @@ const {disposeAutoUpdate, initAutoUpdate} = require('./autoupdate.js');
 const cookies = require('./cookies.js');
 const {getClientCertificate} = require('./usercerts.js');
 const {getDefaultWebPreferences} = require('./prefs.js');
+const {getMaximumMemory} = require('./memconfig.js');
+const {relaunch} = require('./relauncher.js');
 
 // Configure logger.
 log.transports.file.level = 'debug';
@@ -81,6 +83,10 @@ const createMainWindow = () => {
   });
 };
 
+const maxMemory = getMaximumMemory();
+log.info('Setting applications maximum memory to ' + maxMemory + ' MB.');
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + maxMemory);
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -143,4 +149,8 @@ app.on('web-contents-created', (event, contents) => {
       event.preventDefault();
     }
   });
+});
+
+ipcMain.on('restart', (event, value) => {
+  relaunch();
 });
