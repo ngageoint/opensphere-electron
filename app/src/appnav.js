@@ -1,4 +1,5 @@
 // Node Modules
+const config = require('config');
 const fs = require('fs');
 const log = require('electron-log');
 const path = require('path');
@@ -63,6 +64,18 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
   if (fs.existsSync(appEnv.preloadDir)) {
     const preloads = fs.readdirSync(appEnv.preloadDir);
     browserWindow.webContents.session.setPreloads(preloads.map(getPreloadPath));
+  }
+
+  if (config.has('electron.webRequest.requestHeaders')) {
+    // Request header overrides from config
+    const requestHeaders = config.get('electron.webRequest.requestHeaders');
+    browserWindow.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+      Object.assign(details.requestHeaders, requestHeaders);
+
+      callback({
+        requestHeaders: details.requestHeaders
+      });
+    });
   }
 
   // Delete X-Frame-Options header from XHR responses to avoid preventing URL's from displaying in an iframe.
