@@ -50,7 +50,7 @@ const parseCookieOptions = (options) => {
     const parts = opt.split('=').map(trimCookieValue);
     if (parts.length > 0 && parts[0]) {
       const key = parts[0];
-      if (key === 'secure' || key === 'samesite') {
+      if (key === 'secure') {
         result[key] = true;
       } else if (parts.length > 1 && parts[1]) {
         result[key] = parts[1];
@@ -98,7 +98,8 @@ const onSetCookie = (event, value) => {
         name: name,
         value: value,
         expirationDate: expirationDate,
-        secure: !!options.secure
+        secure: !!options.secure,
+        sameSite: options.sameSite || 'lax'
       }).then(() => {
         if (event.sender) {
           updateRendererCookies(event.sender);
