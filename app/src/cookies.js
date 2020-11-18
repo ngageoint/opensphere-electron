@@ -99,7 +99,7 @@ const onSetCookie = (event, value) => {
         value: value,
         expirationDate: expirationDate,
         secure: !!options.secure,
-        sameSite: options.sameSite || 'no_restriction'
+        sameSite: options.sameSite || 'lax'
       }).then(() => {
         if (event.sender) {
           updateRendererCookies(event.sender);

@@ -18,12 +18,7 @@ const getDefaultWebPreferences = () => ({
   //
   // https://www.electronjs.org/docs/tutorial/security#3-enable-context-isolation-for-remote-content
   //
-  contextIsolation: true,
-
-  //
-  // Enables the ability for application-owned iframes to load the preload script.
-  //
-  nodeIntegrationInSubFrames: true
+  contextIsolation: true
 });
 
 
