@@ -25,7 +25,7 @@ const EventType = {
 const updateRendererCookies = (webContents) => {
   session.defaultSession.cookies.get({url: cookieUrl}).then((cookies) => {
     const browserCookies = cookies.map((c) => `${c.name}=${c.value}`).join('; ');
-    webContents.send(EventType.UPDATE, browserCookies);
+    webContents.reply(EventType.UPDATE, browserCookies);
   });
 };
 
