@@ -89,9 +89,7 @@ const onSetCookie = (event, value) => {
         secure: !!options.secure,
         sameSite: options.sameSite || 'lax'
       }).then(() => {
-        if (event.sender) {
-          onUpdateCookies(event);
-        }
+        onUpdateCookies(event);
       });
     }
   }
