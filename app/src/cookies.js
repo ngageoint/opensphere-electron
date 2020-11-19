@@ -19,18 +19,6 @@ const EventType = {
 
 
 /**
- * Update cookies in a renderer process.
- * @param {WebContents} webContents The WebContents instance to update.
- */
-const updateRendererCookies = (webContents) => {
-  session.defaultSession.cookies.get({url: cookieUrl}).then((cookies) => {
-    const browserCookies = cookies.map((c) => `${c.name}=${c.value}`).join('; ');
-    webContents.reply(EventType.UPDATE, browserCookies);
-  });
-};
-
-
-/**
  * Removes whitespace from a cookie value.
  * @param {string} value The value.
  * @return {string} The trimmed value, or an empty string if value was null/undefined.
@@ -102,7 +90,7 @@ const onSetCookie = (event, value) => {
         sameSite: options.sameSite || 'lax'
       }).then(() => {
         if (event.sender) {
-          updateRendererCookies(event.sender);
+          onUpdateCookies(event);
         }
       });
     }
@@ -111,13 +99,14 @@ const onSetCookie = (event, value) => {
 
 
 /**
- * Handle cookie update event from renderer.
- * @param {Event} event The event.
+ * Update cookies in a renderer process.
+ * @param {Event} event The event to reply to.
  */
 const onUpdateCookies = (event) => {
-  if (event.sender) {
-    updateRendererCookies(event.sender);
-  }
+  session.defaultSession.cookies.get({url: cookieUrl}).then((cookies) => {
+    const browserCookies = cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+    event.reply(EventType.UPDATE, browserCookies);
+  });
 };
 
 
@@ -135,7 +124,7 @@ const initHandlers = () => {
  */
 const disposeHandlers = () => {
   ipcMain.removeListener(EventType.SET, onSetCookie);
-  ipcMain.removeListener(EventType.UPDATE, updateRendererCookies);
+  ipcMain.removeListener(EventType.UPDATE, onUpdateCookies);
 };
 
 
