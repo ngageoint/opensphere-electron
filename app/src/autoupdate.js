@@ -243,35 +243,36 @@ const onUpdateAvailable = (info) => {
   // Prompt that a new version is available when using an installed app, or the release page is configured.
   const targetWindow = getTargetWindow();
   if (targetWindow && (!process.env.PORTABLE_EXECUTABLE_DIR || config.has('electron.releaseUrl'))) {
-    const index = dialog.showMessageBoxSync(targetWindow, {
+    dialog.showMessageBox(targetWindow, {
       type: 'info',
       title: 'Update Available',
       message: `A new version of ${app.name} (${info.version}) is available. Would you like to download it now?`,
       buttons: ['Yes', 'No'],
+      checkboxLabel: 'Do not ask again for this version',
       defaultId: 0
-    });
+    }).then((retval) => {
+      if (retval.response === 0) {
+        if (appEnv.isDev || process.env.PORTABLE_EXECUTABLE_DIR) {
+          // Dev/portable apps can't be updated automatically, so open the release page.
+          openReleaseUrl();
+        } else {
+          updating = true;
 
-    if (index === 0) {
-      if (appEnv.isDev || process.env.PORTABLE_EXECUTABLE_DIR) {
-        // Dev/portable apps can't be updated automatically, so open the release page.
-        openReleaseUrl();
-      } else {
-        updating = true;
+          dialog.showMessageBox(targetWindow, {
+            type: 'info',
+            title: 'Update Downloading',
+            message: 'Update is being downloaded, and you will be notified when it completes.',
+            buttons: ['OK'],
+            defaultId: 0
+          });
 
-        dialog.showMessageBox(targetWindow, {
-          type: 'info',
-          title: 'Update Downloading',
-          message: 'Update is being downloaded, and you will be notified when it completes.',
-          buttons: ['OK'],
-          defaultId: 0
-        });
-
-        autoUpdater.downloadUpdate();
+          autoUpdater.downloadUpdate();
+        }
+      } else if (retval.checkboxChecked) {
+        ignoredVersions.push(info.version);
+        fs.writeFileSync(ignorePath, JSON.stringify(ignoredVersions), 'utf-8');
       }
-    } else {
-      ignoredVersions.push(info.version);
-      fs.writeFileSync(ignorePath, JSON.stringify(ignoredVersions), 'utf-8');
-    }
+    });
   }
 };
 
