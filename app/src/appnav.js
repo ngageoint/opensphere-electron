@@ -176,10 +176,8 @@ const getPreloadPath = (script) => {
  * @param {string} url The URL to open.
  */
 const openExternal = (url) => {
-  log.debug(`Opening external window: ${url}`);
-  shell.openExternal(url).then(() => {}, (reject) => {
-    log.debug(reject);
-  });
+  log.info(`Opening external window: ${url}`);
+  shell.openExternal(url).catch((err) => log.info(err));
 };
 
 
@@ -195,6 +193,7 @@ const tryDecodeURI = (url) => {
   } catch (e) {
     // Safely log the error into electron output instead of sticking a traceback into a popup window.
     log.error(e);
+    log.warn(`URL ${url} contains invalid characters.`);
     return url;
   }
 };
