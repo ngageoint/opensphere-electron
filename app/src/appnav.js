@@ -100,7 +100,7 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     //   3. We've purposely axed CORS and XSS security from Electron so that the
     //      user isn't bothered by that nonsense in a desktop app. As soon as you
     //      treat Electron as a generic browser, that tears a hole in everything.
-    const decodedUrl = decodeURIComponent(url);
+    const decodedUrl = tryDecodeURI(url);
     if (appEnv.isInternalLink(decodedUrl)) {
       log.debug('Opening window internally.');
     } else if (decodedUrl.indexOf('about:blank') === -1 &&
@@ -122,7 +122,7 @@ const createBrowserWindow = (webPreferences, parentWindow) => {
     log.debug(`Event [will-navigate]: ${url}`);
 
     // Internal navigation needs to detect when navigating to a configured app and get the correct URL for that app.
-    const decodedUrl = decodeURIComponent(url);
+    const decodedUrl = tryDecodeURI(url);
     if (decodedUrl.startsWith('file://') && decodedUrl.indexOf(slash(appEnv.basePath)) > -1) {
       const appName = getAppFromUrl(url);
       if (appName) {
@@ -176,8 +176,26 @@ const getPreloadPath = (script) => {
  * @param {string} url The URL to open.
  */
 const openExternal = (url) => {
-  log.debug(`Opening external window: ${url}`);
-  shell.openExternal(url);
+  log.info(`Opening external window: ${url}`);
+  shell.openExternal(url).catch((err) => log.info(err));
+};
+
+
+/**
+ * Try to decode a URL. The browser's `decodeURIComponent` throws if the URI is malformed rather than just logging
+ * an error and returning the original value, so we do that here.
+ * @param {string} url The URL to maybe decode.
+ * @return {string} The decoded URL, or the original if there was an error.
+ */
+const tryDecodeURI = (url) => {
+  try {
+    return decodeURIComponent(url);
+  } catch (e) {
+    // Safely log the error into electron output instead of sticking a traceback into a popup window.
+    log.error(e);
+    log.warn(`URL ${url} contains invalid characters.`);
+    return url;
+  }
 };
 
 
