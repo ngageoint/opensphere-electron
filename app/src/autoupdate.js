@@ -243,39 +243,77 @@ const onUpdateAvailable = (info) => {
   // Prompt that a new version is available when using an installed app, or the release page is configured.
   const targetWindow = getTargetWindow();
   if (targetWindow && (!process.env.PORTABLE_EXECUTABLE_DIR || config.has('electron.releaseUrl'))) {
-    dialog.showMessageBox(targetWindow, {
-      type: 'info',
-      title: 'Update Available',
-      message: `A new version of ${app.name} (${info.version}) is available. Would you like to download it now?`,
-      buttons: ['Yes', 'No'],
-      checkboxLabel: 'Do not ask again for this version',
-      defaultId: 0
-    }).then((retval) => {
-      if (retval.response === 0) {
-        if (appEnv.isDev || process.env.PORTABLE_EXECUTABLE_DIR) {
-          // Dev/portable apps can't be updated automatically, so open the release page.
-          openReleaseUrl();
-        } else {
-          updating = true;
 
-          dialog.showMessageBox(targetWindow, {
-            type: 'info',
-            title: 'Update Downloading',
-            message: 'Update is being downloaded, and you will be notified when it completes.',
-            buttons: ['OK'],
-            defaultId: 0
-          });
-
-          autoUpdater.downloadUpdate();
+    if(config.has('electron.releaseNotesUrl')) {
+      dialog.showMessageBox(targetWindow, {
+        type: 'question',
+        title: 'Update Available',
+        message: `A new version of ${app.name} (${info.version}) is available. Would you like to read What's New ' 
+        + ' before accepting download?`,
+        buttons: ['What\'s New', 'Download', 'Cancel'],
+        checkboxLabel: 'Do not ask again for this version',
+        defaultId: 0
+      }).then((retval) => {
+        if (retval.response === 0) {
+          openExternal(releaseUrl);
+          showUpdateAvailable(info);
+        } else if (retval.response === 1) {
+          startDownload();
+        } else if (retval.checkboxChecked) {
+          ignoreVersion();
         }
-      } else if (retval.checkboxChecked) {
-        ignoredVersions.push(info.version);
-        fs.writeFileSync(ignorePath, JSON.stringify(ignoredVersions), 'utf-8');
-      }
-    });
+      });
+    } else {
+      showUpdateAvailable(info);
+    }
   }
 };
 
+/**
+ * Shows the update available dialog.
+ * @param {UpdateInfo} info 
+ */
+const showUpdateAvailable = (info) => {
+  const targetWindow = getTargetWindow();
+  dialog.showMessageBox(targetWindow, {
+    type: 'info',
+    title: 'Update Available',
+    message: `A new version of ${app.name} (${info.version}) is available. Would you like to download it now?`,
+    buttons: ['Yes', 'No'],
+    checkboxLabel: 'Do not ask again for this version',
+    defaultId: 0
+  }).then((retval) => {
+    if (retval.response === 0) {
+      if (appEnv.isDev || process.env.PORTABLE_EXECUTABLE_DIR) {
+        // Dev/portable apps can't be updated automatically, so open the release page.
+        openReleaseUrl();
+      } else {
+        startDownload();
+      }
+    } else if (retval.checkboxChecked) {
+      ignoreVersion();
+    }
+  });
+};
+
+const startDownload = () => {
+  updating = true;
+  const targetWindow = getTargetWindow();
+  dialog.showMessageBox(targetWindow, {
+    type: 'info',
+    title: 'Update Downloading',
+    message: 'Update is being downloaded, and you will be notified when it completes.',
+    buttons: ['OK'],
+    defaultId: 0
+  });
+
+  autoUpdater.downloadUpdate();
+}
+
+const ignoreVersion = () => {
+  ignoredVersions.push(info.version);
+  fs.writeFileSync(ignorePath, JSON.stringify(ignoredVersions), 'utf-8');
+}
 
 /**
  * Handle update downloaded event.
