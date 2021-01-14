@@ -243,43 +243,46 @@ const onUpdateAvailable = (info) => {
   // Prompt that a new version is available when using an installed app, or the release page is configured.
   const targetWindow = getTargetWindow();
   if (targetWindow && (!process.env.PORTABLE_EXECUTABLE_DIR || config.has('electron.releaseUrl'))) {
-
-    if(config.has('electron.releaseNotesUrl')) {
+    if (config.has('electron.releaseNotesUrl')) {
+      const releaseNotesUrl = config.get('electron.releaseNotesUrl');
+      const message = 'A new version of ' + app.name + ' (' + info.version + ') is available. ' +
+       ' Would you like to read What\'s New before accepting download?';
       dialog.showMessageBox(targetWindow, {
         type: 'question',
         title: 'Update Available',
-        message: `A new version of ${app.name} (${info.version}) is available. Would you like to read What's New ' 
-        + ' before accepting download?`,
+        message: message,
         buttons: ['What\'s New', 'Download', 'Cancel'],
         checkboxLabel: 'Do not ask again for this version',
         defaultId: 0
       }).then((retval) => {
         if (retval.response === 0) {
-          openExternal(releaseUrl);
-          showUpdateAvailable(info);
+          openExternal(releaseNotesUrl);
+          showUpdateAvailable(info, `${app.name} (${info.version})`);
         } else if (retval.response === 1) {
           startDownload();
         } else if (retval.checkboxChecked) {
-          ignoreVersion();
+          ignoreVersion(info);
         }
       });
     } else {
-      showUpdateAvailable(info);
+      showUpdateAvailable(info,
+          `A new version of ${app.name} (${info.version}) is available. Would you like to download it now?`);
     }
   }
 };
 
 /**
  * Shows the update available dialog.
- * @param {UpdateInfo} info 
+ * @param {UpdateInfo} info The update info.
+ * @param {string} message The message to show the user.
  */
-const showUpdateAvailable = (info) => {
+const showUpdateAvailable = (info, message) => {
   const targetWindow = getTargetWindow();
   dialog.showMessageBox(targetWindow, {
     type: 'info',
     title: 'Update Available',
-    message: `A new version of ${app.name} (${info.version}) is available. Would you like to download it now?`,
-    buttons: ['Yes', 'No'],
+    message: message,
+    buttons: ['Download', 'Cancel'],
     checkboxLabel: 'Do not ask again for this version',
     defaultId: 0
   }).then((retval) => {
@@ -291,11 +294,14 @@ const showUpdateAvailable = (info) => {
         startDownload();
       }
     } else if (retval.checkboxChecked) {
-      ignoreVersion();
+      ignoreVersion(info);
     }
   });
 };
 
+/**
+ * Starts the download of new version.
+ */
 const startDownload = () => {
   updating = true;
   const targetWindow = getTargetWindow();
@@ -308,12 +314,16 @@ const startDownload = () => {
   });
 
   autoUpdater.downloadUpdate();
-}
+};
 
-const ignoreVersion = () => {
+/**
+ * Saves to ignore version in config.
+ * @param {UpdateInfo} info Contains the version.
+ */
+const ignoreVersion = (info) => {
   ignoredVersions.push(info.version);
   fs.writeFileSync(ignorePath, JSON.stringify(ignoredVersions), 'utf-8');
-}
+};
 
 /**
  * Handle update downloaded event.
