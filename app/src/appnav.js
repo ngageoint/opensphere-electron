@@ -6,7 +6,7 @@ const path = require('path');
 const slash = require('slash');
 
 // Electron Modules
-const {dialog, shell, BrowserWindow} = require('electron');
+const {clipboard, dialog, shell, BrowserWindow} = require('electron');
 
 // Local Modules
 const appEnv = require('./appenv.js');
@@ -177,7 +177,21 @@ const getPreloadPath = (script) => {
  */
 const openExternal = (url) => {
   log.info(`Opening external window: ${url}`);
-  shell.openExternal(url).catch((err) => log.info(err));
+  shell.openExternal(url).catch((err) => {
+    log.info(err);
+    dialog.showMessageBox(null, {
+      buttons: ['Copy URL to Clipboard', 'Cancel'],
+      type: 'warning',
+      title: 'Invalid URL',
+      message: 'The URL contained invalid characters and could not be opened.',
+      detail: `Please navigate to the page manually in your browser of choice:\n${url}`,
+      defaultId: 1
+    }).then((retval) => {
+      if (retval.response === 0) {
+        clipboard.writeText(url);
+      }
+    });
+  });
 };
 
 
