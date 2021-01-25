@@ -1,4 +1,5 @@
 // Node Modules
+const Promise = require('bluebird');
 const config = require('config');
 const fs = require('fs');
 const path = require('path');
@@ -6,7 +7,7 @@ const log = require('electron-log');
 const {autoUpdater} = require('electron-updater');
 
 // Electron Modules
-const {app, dialog, ipcMain, BrowserWindow} = require('electron');
+const {app, dialog, ipcMain, session, BrowserWindow} = require('electron');
 
 // Local Modules
 const appEnv = require('./appenv.js');
@@ -18,6 +19,20 @@ const {openExternal} = require('./appnav.js');
  * @type {boolean}
  */
 let updating = false;
+
+
+/**
+ * The main browser window.
+ * @type {BrowserWindow|undefined}
+ */
+let mainWindow;
+
+
+/**
+ * If cookies have been copied from the main window session.
+ * @type {boolean}
+ */
+let cookiesCopied = false;
 
 
 /**
@@ -76,18 +91,61 @@ const checkForUpdates = (user = false) => {
 
 
 /**
- * Handle IPC client certificate handler registered event.
+ * Handle IPC client check for updates event.
  * @param {Event} event The event.
  */
-const onCertHandlerRegistered = (event) => {
-  checkForUpdates();
+const onCheckForUpdates = (event) => {
+  copyReleaseUrlCookies().then(() => {
+    checkForUpdates();
+  });
+};
+
+
+/**
+ * Copy cookies for the release URL from the main window.
+ *
+ * This is a workaround to electron-updater not supporting selecting/passing client certificates in update requests.
+ * The renderer process should make a request to the release URL to populate any authentication cookies, then notify
+ * the main process to update by firing a `check-for-updates` event.
+ *
+ * @return {Promise} A promise that resolves when cookies have been copied.
+ */
+const copyReleaseUrlCookies = () => {
+  if (!cookiesCopied) {
+    const releaseUrl = getReleaseUrl();
+    if (releaseUrl && mainWindow) {
+      const updaterSession = session.fromPartition('electron-updater');
+      if (updaterSession) {
+        cookiesCopied = true;
+
+        return mainWindow.webContents.session.cookies.get({url: releaseUrl}).then((cookies) => {
+          Promise.all(cookies.map((c) => {
+            // Clone the cookie and replace the domain/path attributes with the release url.
+            const updateCookie = Object.assign({}, c);
+            updateCookie.url = releaseUrl;
+
+            delete updateCookie.domain;
+            delete updateCookie.path;
+
+            // Set the cookie on the electron-updater session.
+            return updaterSession.cookies.set(updateCookie);
+          }));
+        });
+      }
+    }
+  }
+
+  return Promise.resolve();
 };
 
 
 /**
  * Initialize auto updates.
+ * @param {BrowserWindow} browserWindow The main browser window.
  */
-const initAutoUpdate = () => {
+const initAutoUpdate = (browserWindow) => {
+  mainWindow = browserWindow;
+
   autoUpdater.autoDownload = false;
   autoUpdater.logger = log;
 
@@ -97,9 +155,7 @@ const initAutoUpdate = () => {
   autoUpdater.on('update-not-available', onUpdateNotAvailable);
   autoUpdater.on('update-downloaded', onUpdateDownloaded);
 
-  // Wait for the app to register a certificate handler before checking for updates, so the user will be prompted if
-  // the update endpoint requires a certificate.
-  ipcMain.once('client-certificate-handler-registered', onCertHandlerRegistered);
+  ipcMain.on('check-for-updates', onCheckForUpdates);
 };
 
 
@@ -113,7 +169,7 @@ const disposeAutoUpdate = () => {
   autoUpdater.removeListener('update-not-available', onUpdateNotAvailable);
   autoUpdater.removeListener('update-downloaded', onUpdateDownloaded);
 
-  ipcMain.removeListener('client-certificate-handler-registered', onCertHandlerRegistered);
+  ipcMain.removeListener('check-for-updates', onCheckForUpdates);
 };
 
 
@@ -195,14 +251,24 @@ const hasReleaseUrl = () => config.has('electron.releaseUrl');
 
 
 /**
+ * Get the configured release URL.
+ * @return {string} The release URL.
+ */
+const getReleaseUrl = () => {
+  if (hasReleaseUrl()) {
+    return config.get('electron.releaseUrl') || '';
+  }
+  return '';
+};
+
+
+/**
  * Launch the release URL in a browser, if configured.
  */
 const openReleaseUrl = () => {
-  if (hasReleaseUrl()) {
-    const releaseUrl = config.get('electron.releaseUrl');
-    if (releaseUrl) {
-      openExternal(releaseUrl);
-    }
+  const releaseUrl = getReleaseUrl();
+  if (releaseUrl) {
+    openExternal(releaseUrl);
   }
 };
 
