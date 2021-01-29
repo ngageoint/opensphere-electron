@@ -101,7 +101,7 @@ app.on('ready', () => {
   createMainWindow();
 
   // Initialize auto update.
-  initAutoUpdate();
+  initAutoUpdate(mainWindow);
 });
 
 app.on('select-client-certificate', (event, webContents, url, list, callback) => {
