@@ -23,15 +23,15 @@
   "license": "Apache-2.0",
   "dependencies": {
     "bluebird": "^3.7.2",
-    "config": "^3.2.6",
-    "electron-is-dev": "^1.1.0",
-    "electron-log": "^4.0.6",
-    "electron-updater": "4.2.2",
+    "config": "^3.3.3",
+    "electron-is-dev": "^1.2.0",
+    "electron-log": "^4.3.1",
+    "electron-updater": "^4.3.5",
     "slash": "^3.0.0"
   },
   "devDependencies": {
-    "electron": "8.0.1",
-    "electron-builder": "22.3.2",
+    "electron": "8.5.5",
+    "electron-builder": "22.9.1",
     "eslint": "^6.8.0",
     "eslint-config-google": "^0.14.0"
   }
