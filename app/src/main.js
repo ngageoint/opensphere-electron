@@ -86,7 +86,19 @@ const createMainWindow = () => {
 const maxMemory = getMaximumMemory();
 log.info('Setting applications maximum memory to ' + maxMemory + ' MB.');
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + maxMemory);
-app.commandLine.appendSwitch('disable-site-isolation-trials');
+
+// Load additional appendSwitches from config.
+if (config.has('electron.appendSwitches')) {
+  const appendSwitches = config.get('electron.appendSwitches');
+  for (let i = 0; i < appendSwitches.length; i++) {
+    const appendSwitch = appendSwitches[i];
+    if (appendSwitch.value) {
+      app.commandLine.appendSwitch(appendSwitch.name, appendSwitch.value);
+    } else {
+      app.commandLine.appendSwitch(appendSwitch.name);
+    }
+  }
+}
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -144,6 +156,8 @@ app.on('web-contents-created', (event, contents) => {
 
     // Enable web security
     webPreferences.webSecurity = true;
+
+    webPreferences.additionalArguments = '--disable-site-isolation-trials';
 
     // Verify URL being loaded is local to the app
     if (!params.src.startsWith(`file://${appEnv.basePath}`)) {
