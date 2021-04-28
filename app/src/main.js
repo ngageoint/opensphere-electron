@@ -157,8 +157,6 @@ app.on('web-contents-created', (event, contents) => {
     // Enable web security
     webPreferences.webSecurity = true;
 
-    webPreferences.additionalArguments = '--disable-site-isolation-trials';
-
     // Verify URL being loaded is local to the app
     if (!params.src.startsWith(`file://${appEnv.basePath}`)) {
       event.preventDefault();
