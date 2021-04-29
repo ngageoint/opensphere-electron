@@ -87,6 +87,19 @@ const maxMemory = getMaximumMemory();
 log.info('Setting applications maximum memory to ' + maxMemory + ' MB.');
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + maxMemory);
 
+// Load additional appendSwitches from config.
+if (config.has('electron.appendSwitches')) {
+  const appendSwitches = config.get('electron.appendSwitches');
+  for (let i = 0; i < appendSwitches.length; i++) {
+    const appendSwitch = appendSwitches[i];
+    if (appendSwitch.value) {
+      app.commandLine.appendSwitch(appendSwitch.name, appendSwitch.value);
+    } else {
+      app.commandLine.appendSwitch(appendSwitch.name);
+    }
+  }
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
