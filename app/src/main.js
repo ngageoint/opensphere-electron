@@ -13,6 +13,7 @@ const appEnv = require('./appenv.js');
 const appMenu = require('./appmenu.js');
 const {createBrowserWindow} = require('./appnav.js');
 const {getAppPath, getAppUrl} = require('./apppath.js');
+const settings = require('./appsettings.js');
 const {disposeAutoUpdate, initAutoUpdate} = require('./autoupdate.js');
 const cookies = require('./cookies.js');
 const {getClientCertificate} = require('./usercerts.js');
@@ -110,11 +111,17 @@ app.on('ready', () => {
   // Set up cookie IPC handlers.
   cookies.initHandlers();
 
-  // Launch the application.
-  createMainWindow();
+  // Set up settings IPC handlers.
+  settings.initHandlers();
 
-  // Initialize auto update.
-  initAutoUpdate(mainWindow);
+  // Initialize settings files for the application.
+  settings.initAppSettings().then(() => {
+    // Launch the application.
+    createMainWindow();
+
+    // Initialize auto update.
+    initAutoUpdate(mainWindow);
+  });
 });
 
 app.on('select-client-certificate', (event, webContents, url, list, callback) => {
