@@ -23,6 +23,13 @@ const EventType = {
 
 
 /**
+ * The directory containing the original application settings.
+ * @type {string}
+ */
+let appSettingsDir = '';
+
+
+/**
  * The directory containing user config files and copied app settings.
  * @type {string}
  */
@@ -44,8 +51,15 @@ let defaultSettingsFile = '';
 
 
 /**
+ * Path to the settings configuration file. This stores the list of settings files, their label, etc.
+ * @type {string}
+ */
+let settingsConfigPath = '';
+
+
+/**
  * Settings files available to the application.
- * @type {!Array<string>}
+ * @type {!Array<!ElectronOS.SettingsFile>}
  */
 let settingsFiles = [];
 
@@ -59,7 +73,7 @@ const getBaseSettingsFile = () => baseSettingsFile;
 
 /**
  * Get the settings files available to the application.
- * @return {!Array<string>}
+ * @return {!Array<!ElectronOS.SettingsFile>}
  */
 const getSettingsFiles = () => settingsFiles;
 
@@ -72,37 +86,45 @@ const getUserSettingsDir = () => userSettingsDir;
 
 
 /**
- * Write the base application settings file as a list of overrides.
+ * Map settings file to the override path.
+ * @param {!ElectronOS.SettingsFile} file The file.
+ * @return {string} The override path.
+ */
+const mapFileToOverride = (file) => {
+  let {path} = file;
+  if (!file.enabled) {
+    path = `!${path}`;
+  }
+  return path;
+};
+
+
+/**
+ * Save the base application settings file and the settings configuration.
  * @return {!Promise} A promise that resolves when the file has been saved.
  */
-const saveBaseSettings = async () => {
+const saveSettings = async () => {
   if (baseSettingsFile) {
-    const overridesSettings = {
-      overrides: settingsFiles
-    };
-
-    log.debug(`Writing app settings to: ${baseSettingsFile}`);
-    await fs.writeFileAsync(baseSettingsFile, JSON.stringify(overridesSettings, null, 2));
+    const overrides = settingsFiles.map(mapFileToOverride);
+    await fs.writeFileAsync(baseSettingsFile, JSON.stringify({overrides}, null, 2));
   } else {
-    return Promise.reject(new Error('App settings path has not been initialized!'));
+    return new Error('App settings path has not been initialized!');
+  }
+
+  if (settingsConfigPath) {
+    await fs.writeFileAsync(settingsConfigPath, JSON.stringify(settingsFiles, null, 2));
+  } else {
+    return new Error('Settings config path has not been initialized!');
   }
 };
 
 
 /**
- * Initialize settings for the base application.
- * @return {!Promise} A promise that resolves when settings have been initialized.
+ * Initialize settings path properties used within the module.
  */
-const initAppSettings = async () => {
-  //
-  // Resolve the base path for settings files.
-  //  - The debug app uses <app>/.build.
-  //  - The compiled app uses <app>/dist/<app>/config.
-  //  - The built Electron app uses <app>/config within the resources directory.
-  //
+const initPaths = () => {
   const appPath = getAppPath(appEnv.baseApp, appEnv.basePath);
 
-  let appSettingsDir = '';
   if (appEnv.isDebug) {
     // In the local debug build, copy settings files to .build/userConfig.
     appSettingsDir = path.join(appPath, '.build');
@@ -118,37 +140,69 @@ const initAppSettings = async () => {
     userSettingsDir = path.join(app.getPath('userData'), 'config');
   }
 
-  // Create the path for the base settings file loaded by the application.
+  // Base settings file that will be loaded by the application.
   baseSettingsFile = path.join(userSettingsDir, 'settings.json');
+
+  // Original settings copied from the application.
   defaultSettingsFile = path.join(userSettingsDir, 'settings-default.json');
 
+  // Config file for settings loaded in the application.
+  settingsConfigPath = path.join(userSettingsDir, '.settings-files.json');
+};
+
+
+/**
+ * Create the user settings directory that the app will use to load/store settings files.
+ */
+const initUserDir = async () => {
   if (!fs.existsSync(userSettingsDir)) {
-    // Create the user settings directory that the app will use to load/store settings files.
     await fs.mkdirAsync(userSettingsDir);
-  } else if (fs.existsSync(baseSettingsFile)) {
-    // Base settings file already exists, so load in the list of settings files from the overrides.
-    const baseSettings = await fs.readFileAsync(baseSettingsFile);
-    if (baseSettings) {
-      const baseSettingsJson = JSON.parse(baseSettings);
-      settingsFiles = baseSettingsJson.overrides || [];
-    }
   }
+};
+
+
+/**
+ * Initialize the settings files config.
+ */
+const initSettingsFiles = async () => {
+  if (fs.existsSync(settingsConfigPath)) {
+    const content = await fs.readFileAsync(settingsConfigPath);
+    settingsFiles = JSON.parse(content);
+  } else {
+    settingsFiles = [];
+  }
+};
+
+
+/**
+ * Initialize settings for the base application.
+ * @return {!Promise} A promise that resolves when settings have been initialized.
+ */
+const initAppSettings = async () => {
+  initPaths();
+  await initUserDir();
+  await initSettingsFiles();
 
   const appSettingsFile = path.join(appSettingsDir, appEnv.isDebug ? 'settings-debug.json' : 'settings.json');
   if (fs.existsSync(appSettingsFile)) {
     // Copy the original app settings into the user directory.
     await fs.copyFileAsync(appSettingsFile, defaultSettingsFile);
 
-    // If the list of overrides was not loaded from disk, initialize it with the default settings and save the file.
+    // If the list of overrides was not loaded from disk, initialize it with the default settings file.
     if (!settingsFiles.length) {
-      settingsFiles.push(defaultSettingsFile);
+      settingsFiles.push({
+        default: true,
+        enabled: true,
+        label: 'Default',
+        path: defaultSettingsFile
+      });
     }
   } else {
     log.warn(`Unable to locate app settings file at ${appSettingsFile}!`);
   }
 
   // Make sure the base settings file is saved.
-  await saveBaseSettings();
+  await saveSettings();
 };
 
 
@@ -181,19 +235,19 @@ const disposeHandlers = () => {
 /**
  * Save a new settings file.
  * @param {Event} event The event to reply to.
- * @param {string} fileName The settings file name.
+ * @param {!ElectronOS.SettingsFile} file The settings file.
  * @param {string} content The settings content.
- * @return {!Promise<!Array<string>>} A promise that resolves to the updated list of settings files.
+ * @return {!Promise<!Array<!ElectronOS.SettingsFile>>} A promise that resolves to the updated list of settings files.
  */
-const onAddSettings = async (event, fileName, content) => {
-  const filePath = path.join(userSettingsDir, fileName);
-  await fs.writeFileAsync(filePath, content);
+const onAddSettings = async (event, file, content) => {
+  file.path = path.join(userSettingsDir, file.path);
+  await fs.writeFileAsync(file.path, content);
 
-  if (settingsFiles.indexOf(filePath) === -1) {
-    settingsFiles.push(filePath);
+  if (!settingsFiles.some((f) => f.path === file.path)) {
+    settingsFiles.push(file);
   }
 
-  await saveBaseSettings();
+  await saveSettings();
 
   return settingsFiles;
 };
@@ -202,18 +256,18 @@ const onAddSettings = async (event, fileName, content) => {
 /**
  * Remove a settings file.
  * @param {Event} event The event to reply to.
- * @param {string} file The settings file path.
- * @return {!Promise<!Array<string>>} A promise that resolves to the updated list of settings files.
+ * @param {!ElectronOS.SettingsFile} file The settings file path.
+ * @return {!Promise<!Array<!ElectronOS.SettingsFile>>} A promise that resolves to the updated list of settings files.
  */
 const onRemoveSettings = async (event, file) => {
-  if (file && file !== defaultSettingsFile) {
-    const idx = settingsFiles.indexOf(file);
+  if (file && file.path !== defaultSettingsFile) {
+    const idx = settingsFiles.findIndex((f) => f.path === file.path);
     if (idx > -1) {
       settingsFiles.splice(idx, 1);
     }
   }
 
-  await saveBaseSettings();
+  await saveSettings();
 
   return settingsFiles;
 };
@@ -243,7 +297,7 @@ const onGetUserSettingsDir = async (event) => userSettingsDir;
 /**
  * Handle settings set event from renderer.
  * @param {Event} event The event.
- * @param {!Array<string>} value The settings file value.
+ * @param {!Array<!ElectronOS.SettingsFile>} value The settings file value.
  */
 const onSetSettings = async (event, value) => {
   await setSettingsFiles(value);
@@ -253,12 +307,12 @@ const onSetSettings = async (event, value) => {
 
 /**
  * Set the settings files available to the application.
- * @param {!Array<string>} value The settings files.
+ * @param {!Array<!ElectronOS.SettingsFile>} value The settings files.
  * @return {!Promise} A promise that resolves when settings files have been updated and saved.
  */
 const setSettingsFiles = async (value) => {
   settingsFiles = value;
-  await saveBaseSettings();
+  await saveSettings();
   return settingsFiles;
 };
 
