@@ -17,6 +17,7 @@ const EventType = {
   GET_FILES: 'get-settings-files',
   GET_BASE_FILE: 'get-base-settings-file',
   GET_USER_DIR: 'get-user-settings-dir',
+  REMOVE: 'remove-settings',
   SET: 'set-settings'
 };
 
@@ -33,6 +34,13 @@ let userSettingsDir = '';
  * @type {string}
  */
 let baseSettingsFile = '';
+
+
+/**
+ * The default settings file, copied from the original application settings.
+ * @type {string}
+ */
+let defaultSettingsFile = '';
 
 
 /**
@@ -112,6 +120,7 @@ const initAppSettings = async () => {
 
   // Create the path for the base settings file loaded by the application.
   baseSettingsFile = path.join(userSettingsDir, 'settings.json');
+  defaultSettingsFile = path.join(userSettingsDir, 'settings-default.json');
 
   if (!fs.existsSync(userSettingsDir)) {
     // Create the user settings directory that the app will use to load/store settings files.
@@ -128,7 +137,6 @@ const initAppSettings = async () => {
   const appSettingsFile = path.join(appSettingsDir, appEnv.isDebug ? 'settings-debug.json' : 'settings.json');
   if (fs.existsSync(appSettingsFile)) {
     // Copy the original app settings into the user directory.
-    const defaultSettingsFile = path.join(userSettingsDir, 'settings-default.json');
     await fs.copyFileAsync(appSettingsFile, defaultSettingsFile);
 
     // If the list of overrides was not loaded from disk, initialize it with the default settings and save the file.
@@ -152,6 +160,7 @@ const initHandlers = () => {
   ipcMain.handle(EventType.GET_FILES, onGetSettingsFiles);
   ipcMain.handle(EventType.GET_BASE_FILE, onGetBaseSettingsFile);
   ipcMain.handle(EventType.GET_USER_DIR, onGetUserSettingsDir);
+  ipcMain.handle(EventType.REMOVE, onRemoveSettings);
   ipcMain.handle(EventType.SET, onSetSettings);
 };
 
@@ -164,6 +173,7 @@ const disposeHandlers = () => {
   ipcMain.removeListener(EventType.GET_FILES, onGetSettingsFiles);
   ipcMain.removeListener(EventType.GET_BASE_FILE, onGetBaseSettingsFile);
   ipcMain.removeListener(EventType.GET_USER_DIR, onGetUserSettingsDir);
+  ipcMain.removeListener(EventType.REMOVE, onRemoveSettings);
   ipcMain.removeListener(EventType.SET, onSetSettings);
 };
 
@@ -182,6 +192,28 @@ const onAddSettings = async (event, fileName, content) => {
   if (settingsFiles.indexOf(filePath) === -1) {
     settingsFiles.push(filePath);
   }
+
+  await saveBaseSettings();
+
+  return settingsFiles;
+};
+
+
+/**
+ * Remove a settings file.
+ * @param {Event} event The event to reply to.
+ * @param {string} file The settings file path.
+ * @return {!Promise<!Array<string>>} A promise that resolves to the updated list of settings files.
+ */
+const onRemoveSettings = async (event, file) => {
+  if (file && file !== defaultSettingsFile) {
+    const idx = settingsFiles.indexOf(file);
+    if (idx > -1) {
+      settingsFiles.splice(idx, 1);
+    }
+  }
+
+  await saveBaseSettings();
 
   return settingsFiles;
 };
