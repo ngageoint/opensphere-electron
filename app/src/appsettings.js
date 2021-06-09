@@ -264,6 +264,12 @@ const onRemoveSettings = async (event, file) => {
     const idx = settingsFiles.findIndex((f) => f.path === file.path);
     if (idx > -1) {
       settingsFiles.splice(idx, 1);
+
+      try {
+        await fs.unlinkAsync(file.path);
+      } catch (e) {
+        log.error(`Failed deleting config file at ${file.path}: ${e.message}`);
+      }
     }
   }
 
