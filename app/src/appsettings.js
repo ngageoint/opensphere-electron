@@ -142,10 +142,10 @@ const initPaths = () => {
   }
 
   // Base settings file that will be loaded by the application.
-  baseSettingsFile = path.join(userSettingsDir, 'settings.json');
+  baseSettingsFile = path.join(userSettingsDir, '.settings.json');
 
   // Original settings copied from the application.
-  defaultSettingsFile = path.join(userSettingsDir, 'settings-default.json');
+  defaultSettingsFile = path.join(userSettingsDir, '.settings-default.json');
 
   // Config file for settings loaded in the application.
   settingsConfigPath = path.join(userSettingsDir, '.settings-files.json');
@@ -246,8 +246,13 @@ const onAddSettings = async (event, file, content) => {
   file.path = path.join(userSettingsDir, file.path);
   await fs.writeFileAsync(file.path, content);
 
-  if (!settingsFiles.some((f) => f.path === file.path)) {
+  const idx = settingsFiles.findIndex((f) => f.path === file.path);
+  if (idx === -1) {
+    // New file
     settingsFiles.push(file);
+  } else {
+    // Replace existing file
+    settingsFiles[idx] = file;
   }
 
   await saveSettings();
