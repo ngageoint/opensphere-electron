@@ -18,7 +18,8 @@ const EventType = {
   GET_BASE_FILE: 'get-base-settings-file',
   GET_USER_DIR: 'get-user-settings-dir',
   REMOVE: 'remove-settings',
-  SET: 'set-settings'
+  SET: 'set-settings',
+  UPDATE: 'update-settings'
 };
 
 
@@ -216,6 +217,7 @@ const initHandlers = () => {
   ipcMain.handle(EventType.GET_USER_DIR, onGetUserSettingsDir);
   ipcMain.handle(EventType.REMOVE, onRemoveSettings);
   ipcMain.handle(EventType.SET, onSetSettings);
+  ipcMain.handle(EventType.UPDATE, onUpdateSettings);
 };
 
 
@@ -229,6 +231,7 @@ const disposeHandlers = () => {
   ipcMain.removeListener(EventType.GET_USER_DIR, onGetUserSettingsDir);
   ipcMain.removeListener(EventType.REMOVE, onRemoveSettings);
   ipcMain.removeListener(EventType.SET, onSetSettings);
+  ipcMain.removeListener(EventType.UPDATE, onUpdateSettings);
 };
 
 
@@ -256,7 +259,7 @@ const onAddSettings = async (event, file, content) => {
 /**
  * Remove a settings file.
  * @param {Event} event The event to reply to.
- * @param {!ElectronOS.SettingsFile} file The settings file path.
+ * @param {!ElectronOS.SettingsFile} file The settings.
  * @return {!Promise<!Array<!ElectronOS.SettingsFile>>} A promise that resolves to the updated list of settings files.
  */
 const onRemoveSettings = async (event, file) => {
@@ -270,6 +273,26 @@ const onRemoveSettings = async (event, file) => {
       } catch (e) {
         log.error(`Failed deleting config file at ${file.path}: ${e.message}`);
       }
+    }
+  }
+
+  await saveSettings();
+
+  return settingsFiles;
+};
+
+
+/**
+ * Update a settings file.
+ * @param {Event} event The event to reply to.
+ * @param {!ElectronOS.SettingsFile} file The settings.
+ * @return {!Promise<!Array<!ElectronOS.SettingsFile>>} A promise that resolves to the updated list of settings files.
+ */
+const onUpdateSettings = async (event, file) => {
+  if (file) {
+    const idx = settingsFiles.findIndex((f) => f.path === file.path);
+    if (idx > -1) {
+      settingsFiles[idx] = file;
     }
   }
 
