@@ -1,4 +1,5 @@
 const Promise = require('bluebird');
+const config = require('config');
 const {app, ipcMain} = require('electron');
 const log = require('electron-log');
 const fs = Promise.promisifyAll(require('fs'));
@@ -19,6 +20,7 @@ const EventType = {
   GET_USER_DIR: 'get-user-settings-dir',
   REMOVE: 'remove-settings',
   SET: 'set-settings',
+  SUPPORTED: 'user-settings-supported',
   UPDATE: 'update-settings'
 };
 
@@ -156,7 +158,7 @@ const initPaths = () => {
  * Create the user settings directory that the app will use to load/store settings files.
  */
 const initUserDir = async () => {
-  if (!fs.existsSync(userSettingsDir)) {
+  if (userSettingsDir && !fs.existsSync(userSettingsDir)) {
     await fs.mkdirAsync(userSettingsDir);
   }
 };
@@ -166,7 +168,7 @@ const initUserDir = async () => {
  * Initialize the settings files config.
  */
 const initSettingsFiles = async () => {
-  if (fs.existsSync(settingsConfigPath)) {
+  if (settingsConfigPath && fs.existsSync(settingsConfigPath)) {
     const content = await fs.readFileAsync(settingsConfigPath);
     settingsFiles = JSON.parse(content);
   } else {
@@ -180,6 +182,11 @@ const initSettingsFiles = async () => {
  * @return {!Promise} A promise that resolves when settings have been initialized.
  */
 const initAppSettings = async () => {
+  if (!supportsUserSettings()) {
+    return;
+  }
+
+  initHandlers();
   initPaths();
   await initUserDir();
   await initSettingsFiles();
@@ -329,6 +336,13 @@ const onGetUserSettingsDir = async (event) => userSettingsDir;
 
 
 /**
+ * Handle request for the user settings directory.
+ * @param {Event} event The event.
+ */
+const onSupportsUserSettings = async (event) => supportsUserSettings();
+
+
+/**
  * Handle settings set event from renderer.
  * @param {Event} event The event.
  * @param {!Array<!ElectronOS.SettingsFile>} value The settings file value.
@@ -351,12 +365,25 @@ const setSettingsFiles = async (value) => {
 };
 
 
+/**
+ * If user settings management is supported.
+ * @return {boolean}
+ */
+const supportsUserSettings = () => {
+  return config.has('electron.enableUserSettings') && config.get('electron.enableUserSettings');
+};
+
+
+// Allow the renderer to check if user settings are supported.
+ipcMain.handle(EventType.SUPPORTED, onSupportsUserSettings);
+
+
 module.exports = {
   disposeHandlers,
   getBaseSettingsFile,
   getSettingsFiles,
   getUserSettingsDir,
   initAppSettings,
-  initHandlers,
-  setSettingsFiles
+  setSettingsFiles,
+  supportsUserSettings
 };
