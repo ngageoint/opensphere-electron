@@ -171,6 +171,11 @@ app.on('web-contents-created', (event, contents) => {
   });
 });
 
+// Allow the renderer to determine if it's the main Electron window.
+ipcMain.handle('is-main-window', async (event) => {
+  return !!mainWindow && event.sender === mainWindow.webContents;
+});
+
 ipcMain.on('restart', (event, value) => {
   relaunch();
 });
