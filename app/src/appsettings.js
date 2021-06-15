@@ -89,16 +89,16 @@ const getUserSettingsDir = () => userSettingsDir;
 
 
 /**
- * Map settings file to the override path.
+ * Reduce settings files to enabled overrides.
+ * @param {!Array<string>} overrides The enabled overrides.
  * @param {!ElectronOS.SettingsFile} file The file.
- * @return {string} The override path.
+ * @return {!Array<string>} The enabled overrides.
  */
-const mapFileToOverride = (file) => {
-  let {path} = file;
-  if (!file.enabled) {
-    path = `!${path}`;
+const reduceFilesToOverrides = (overrides, file) => {
+  if (file.enabled) {
+    overrides.push(file.path);
   }
-  return path;
+  return overrides;
 };
 
 
@@ -108,7 +108,7 @@ const mapFileToOverride = (file) => {
  */
 const saveSettings = async () => {
   if (baseSettingsFile) {
-    const overrides = settingsFiles.map(mapFileToOverride);
+    const overrides = settingsFiles.reduce(reduceFilesToOverrides, []);
     await fs.writeFileAsync(baseSettingsFile, JSON.stringify({overrides}, null, 2));
   } else {
     return new Error('App settings path has not been initialized!');
