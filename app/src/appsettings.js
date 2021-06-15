@@ -68,6 +68,13 @@ let settingsFiles = [];
 
 
 /**
+ * Regular expression to detect a remote (http or https) URL.
+ * @type {RegExp}
+ */
+const URI_REGEXP = /^(?:http|https):\/\//;
+
+
+/**
  * Get the path to the base settings file loaded by the application.
  * @return {string}
  */
@@ -96,7 +103,19 @@ const getUserSettingsDir = () => userSettingsDir;
  */
 const reduceFilesToOverrides = (overrides, file) => {
   if (file.enabled) {
-    overrides.push(file.path);
+    if (URI_REGEXP.test(file.path)) {
+      // Add cache defeater to remote settings file paths. We'll assume the URL doesn't already have a _ param.
+      const cd = `_=${Date.now()}`;
+      if (file.path.indexOf('?') > -1) {
+        // Already has URI params, so add a new one.
+        overrides.push(`${file.path}&${cd}`);
+      } else {
+        // Add URI params.
+        overrides.push(`${file.path}?${cd}`);
+      }
+    } else {
+      overrides.push(file.path);
+    }
   }
   return overrides;
 };
@@ -246,12 +265,15 @@ const disposeHandlers = () => {
  * Save a new settings file.
  * @param {Event} event The event to reply to.
  * @param {!ElectronOS.SettingsFile} file The settings file.
- * @param {string} content The settings content.
+ * @param {?string} content The settings content.
  * @return {!Promise<!Array<!ElectronOS.SettingsFile>>} A promise that resolves to the updated list of settings files.
  */
 const onAddSettings = async (event, file, content) => {
-  file.path = path.join(userSettingsDir, file.path);
-  await fs.writeFileAsync(file.path, content);
+  // Only local files will be saved to user settings. Remote files will be loaded by URL.
+  if (!URI_REGEXP.test(file.path) && content) {
+    file.path = path.join(userSettingsDir, file.path);
+    await fs.writeFileAsync(file.path, content);
+  }
 
   const idx = settingsFiles.findIndex((f) => f.path === file.path);
   if (idx === -1) {
@@ -280,10 +302,12 @@ const onRemoveSettings = async (event, file) => {
     if (idx > -1) {
       settingsFiles.splice(idx, 1);
 
-      try {
-        await fs.unlinkAsync(file.path);
-      } catch (e) {
-        log.error(`Failed deleting config file at ${file.path}: ${e.message}`);
+      if (!URI_REGEXP.test(file.path) && fs.existsSync(file.path)) {
+        try {
+          await fs.unlinkAsync(file.path);
+        } catch (e) {
+          log.error(`Failed deleting config file at ${file.path}: ${e.message}`);
+        }
       }
     }
   }
