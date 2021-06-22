@@ -12,6 +12,7 @@ files:
       - '**/*'
 extraResources:
   - config/**/*.json
+  - CHANGELOG.md
 mac:
   category: public.app-category.utilities
   target:

@@ -7,7 +7,7 @@ const {app, globalShortcut, BrowserWindow, Menu} = require('electron');
 
 // Local Modules
 const appEnv = require('./appenv.js');
-const {getAppUrl} = require('./apppath.js');
+const {getAppUrl, getResourcePath} = require('./apppath.js');
 const {checkForUpdates} = require('./autoupdate.js');
 
 
@@ -223,6 +223,23 @@ const createHelpMenu = () => ({
     label: 'Check for Updates...',
     click: () => {
       checkForUpdates(true);
+    }
+  }, {
+    label: 'What\'s New?',
+    click: () => {
+      const changeWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        autoHideMenuBar: true,
+        alwaysOnTop: true,
+        fullscreenable: false,
+        title: 'What\'s New?',
+        titleBarStyle: 'hidden',
+        webPreferences: {
+          javascript: false
+        }
+      });
+      changeWindow.loadURL(getResourcePath('CHANGELOG.md'));
     }
   }]
 });

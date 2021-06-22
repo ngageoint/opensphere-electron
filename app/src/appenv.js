@@ -25,6 +25,13 @@ const basePath = isDev ? path.resolve('..') : path.join(process.resourcesPath, '
 
 
 /**
+ * Base path to extra build resources, if included in the package.
+ * @type {string}
+ */
+const extraResourcePath = isDev ? path.resolve('.') : process.resourcesPath;
+
+
+/**
  * Location of the base application.
  * @type {string}
  */
@@ -86,4 +93,14 @@ const initEnvVars = (osPath) => {
 };
 
 
-module.exports = {baseApp, basePath, iconPath, isDev, isDebug, isInternalLink, initEnvVars, preloadDir};
+module.exports = {
+  baseApp,
+  basePath,
+  iconPath,
+  isDev,
+  isDebug,
+  isInternalLink,
+  initEnvVars,
+  preloadDir,
+  extraResourcePath
+};
