@@ -1,21 +1,13 @@
 const {ipcMain, session} = require('electron');
 
+const CookieEventType = require('./cookieeventtype.js');
+
 
 /**
  * URL used for storing session cookies.
  * @type {string}
  */
 const cookieUrl = 'https://github.com/ngageoint/opensphere-electron';
-
-
-/**
- * Cookie event types.
- * @enum {string}
- */
-const EventType = {
-  SET: 'set-cookie',
-  UPDATE: 'update-cookies'
-};
 
 
 /**
@@ -103,7 +95,7 @@ const onSetCookie = (event, value) => {
 const onUpdateCookies = (event) => {
   session.defaultSession.cookies.get({url: cookieUrl}).then((cookies) => {
     const browserCookies = cookies.map((c) => `${c.name}=${c.value}`).join('; ');
-    event.reply(EventType.UPDATE, browserCookies);
+    event.reply(CookieEventType.UPDATE, browserCookies);
   });
 };
 
@@ -112,8 +104,8 @@ const onUpdateCookies = (event) => {
  * Initialize cookie event handlers.
  */
 const initHandlers = () => {
-  ipcMain.on(EventType.SET, onSetCookie);
-  ipcMain.on(EventType.UPDATE, onUpdateCookies);
+  ipcMain.on(CookieEventType.SET, onSetCookie);
+  ipcMain.on(CookieEventType.UPDATE, onUpdateCookies);
 };
 
 
@@ -121,8 +113,8 @@ const initHandlers = () => {
  * Dispose cookie event handlers.
  */
 const disposeHandlers = () => {
-  ipcMain.removeListener(EventType.SET, onSetCookie);
-  ipcMain.removeListener(EventType.UPDATE, onUpdateCookies);
+  ipcMain.removeListener(CookieEventType.SET, onSetCookie);
+  ipcMain.removeListener(CookieEventType.UPDATE, onUpdateCookies);
 };
 
 

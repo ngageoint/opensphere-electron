@@ -7,22 +7,7 @@ const path = require('path');
 
 const appEnv = require('./appenv.js');
 const {getAppPath} = require('./apppath.js');
-
-
-/**
- * Settings event types.
- * @enum {string}
- */
-const EventType = {
-  ADD: 'add-settings',
-  GET_FILES: 'get-settings-files',
-  GET_BASE_FILE: 'get-base-settings-file',
-  GET_USER_DIR: 'get-user-settings-dir',
-  REMOVE: 'remove-settings',
-  SET: 'set-settings',
-  SUPPORTED: 'user-settings-supported',
-  UPDATE: 'update-settings'
-};
+const SettingsEventType = require('./settingseventtype.js');
 
 
 /**
@@ -237,13 +222,13 @@ const initAppSettings = async () => {
  * Initialize cookie event handlers.
  */
 const initHandlers = () => {
-  ipcMain.handle(EventType.ADD, onAddSettings);
-  ipcMain.handle(EventType.GET_FILES, onGetSettingsFiles);
-  ipcMain.handle(EventType.GET_BASE_FILE, onGetBaseSettingsFile);
-  ipcMain.handle(EventType.GET_USER_DIR, onGetUserSettingsDir);
-  ipcMain.handle(EventType.REMOVE, onRemoveSettings);
-  ipcMain.handle(EventType.SET, onSetSettings);
-  ipcMain.handle(EventType.UPDATE, onUpdateSettings);
+  ipcMain.handle(SettingsEventType.ADD, onAddSettings);
+  ipcMain.handle(SettingsEventType.GET_FILES, onGetSettingsFiles);
+  ipcMain.handle(SettingsEventType.GET_BASE_FILE, onGetBaseSettingsFile);
+  ipcMain.handle(SettingsEventType.GET_USER_DIR, onGetUserSettingsDir);
+  ipcMain.handle(SettingsEventType.REMOVE, onRemoveSettings);
+  ipcMain.handle(SettingsEventType.SET, onSetSettings);
+  ipcMain.handle(SettingsEventType.UPDATE, onUpdateSettings);
 };
 
 
@@ -251,13 +236,13 @@ const initHandlers = () => {
  * Dispose cookie event handlers.
  */
 const disposeHandlers = () => {
-  ipcMain.removeListener(EventType.ADD, onAddSettings);
-  ipcMain.removeListener(EventType.GET_FILES, onGetSettingsFiles);
-  ipcMain.removeListener(EventType.GET_BASE_FILE, onGetBaseSettingsFile);
-  ipcMain.removeListener(EventType.GET_USER_DIR, onGetUserSettingsDir);
-  ipcMain.removeListener(EventType.REMOVE, onRemoveSettings);
-  ipcMain.removeListener(EventType.SET, onSetSettings);
-  ipcMain.removeListener(EventType.UPDATE, onUpdateSettings);
+  ipcMain.removeListener(SettingsEventType.ADD, onAddSettings);
+  ipcMain.removeListener(SettingsEventType.GET_FILES, onGetSettingsFiles);
+  ipcMain.removeListener(SettingsEventType.GET_BASE_FILE, onGetBaseSettingsFile);
+  ipcMain.removeListener(SettingsEventType.GET_USER_DIR, onGetUserSettingsDir);
+  ipcMain.removeListener(SettingsEventType.REMOVE, onRemoveSettings);
+  ipcMain.removeListener(SettingsEventType.SET, onSetSettings);
+  ipcMain.removeListener(SettingsEventType.UPDATE, onUpdateSettings);
 };
 
 
@@ -399,7 +384,7 @@ const supportsUserSettings = () => {
 
 
 // Allow the renderer to check if user settings are supported.
-ipcMain.handle(EventType.SUPPORTED, onSupportsUserSettings);
+ipcMain.handle(SettingsEventType.SUPPORTED, onSupportsUserSettings);
 
 
 module.exports = {
