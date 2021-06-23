@@ -4,6 +4,7 @@ const {app, ipcMain} = require('electron');
 const log = require('electron-log');
 const fs = Promise.promisifyAll(require('fs'));
 const path = require('path');
+const url = require('url');
 
 const appEnv = require('./appenv.js');
 const {getAppPath} = require('./apppath.js');
@@ -99,7 +100,8 @@ const reduceFilesToOverrides = (overrides, file) => {
         overrides.push(`${file.path}?${cd}`);
       }
     } else {
-      overrides.push(file.path);
+      // Local file, convert the path to a file:// URL.
+      overrides.push(url.pathToFileURL(file.path).toString());
     }
   }
   return overrides;
