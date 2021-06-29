@@ -1,6 +1,7 @@
 {
   "electron": {
     "appName": "OpenSphere",
+    "enableUserSettings": true,
     "releaseUrl": "https://github.com/ngageoint/opensphere-electron/releases"
   }
 }

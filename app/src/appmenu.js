@@ -7,7 +7,7 @@ const {app, globalShortcut, BrowserWindow, Menu} = require('electron');
 
 // Local Modules
 const appEnv = require('./appenv.js');
-const {getAppUrl} = require('./apppath.js');
+const {getAppUrl, getResourcePath} = require('./apppath.js');
 const {checkForUpdates} = require('./autoupdate.js');
 
 
@@ -217,15 +217,42 @@ const createWindowMenu = () => {
  * Create the Help application menu.
  * @return {!Object} The menu configuration.
  */
-const createHelpMenu = () => ({
-  label: 'Help',
-  submenu: [{
-    label: 'Check for Updates...',
-    click: () => {
-      checkForUpdates(true);
-    }
-  }]
-});
+const createHelpMenu = () => {
+  const menu = {
+    label: 'Help',
+    submenu: [{
+      label: 'Check for Updates...',
+      click: () => {
+        checkForUpdates(true);
+      }
+    }]
+  };
+
+  // if a changelog is bundled under extraResources in electron-builder.yml, link to it in this menu
+  if (config.has('electron.changelog')) {
+    menu.submenu.push({
+      label: 'What\'s New?',
+      click: () => {
+        const changeWindow = new BrowserWindow({
+          width: 800,
+          height: 600,
+          autoHideMenuBar: true,
+          alwaysOnTop: true,
+          fullscreenable: false,
+          title: 'What\'s New?',
+          titleBarStyle: 'hidden',
+          webPreferences: {
+            javascript: false
+          }
+        });
+        // electron.changelog is the name of the changes file
+        changeWindow.loadURL(getResourcePath(config.get('electron.changelog')));
+      }
+    });
+  }
+
+  return menu;
+};
 
 
 /**

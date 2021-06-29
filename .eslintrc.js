@@ -4,6 +4,9 @@ module.exports = {
     "es6": true,
     "node": true
   },
+  "parserOptions": {
+    "ecmaVersion": 2020
+  },
   "rules": {
     // Don't dangle commas.
     "comma-dangle": ["error", "never"],

@@ -8,6 +8,20 @@ const appEnv = require('./appenv.js');
 
 
 /**
+ * Get the path for a bundled resource.
+ * @param {string} resource The name of the bundled resource to get.
+ * @return {string}
+ */
+const getResourcePath = (resource) => {
+  return format({
+    pathname: path.join(appEnv.extraResourcePath, resource),
+    protocol: 'file:',
+    slashes: true
+  });
+};
+
+
+/**
  * Get the path for an application.
  * @param {string} appName The application name.
  * @param {string} basePath The base application path.
@@ -76,4 +90,4 @@ const getAppFromUrl = (url) => {
 };
 
 
-module.exports = {getAppPath, getAppFromUrl, getAppUrl};
+module.exports = {getAppPath, getAppFromUrl, getAppUrl, getResourcePath};

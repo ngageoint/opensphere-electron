@@ -13,6 +13,7 @@ const appEnv = require('./appenv.js');
 const appMenu = require('./appmenu.js');
 const {createBrowserWindow} = require('./appnav.js');
 const {getAppPath, getAppUrl} = require('./apppath.js');
+const {initAppSettings} = require('./appsettings.js');
 const {disposeAutoUpdate, initAutoUpdate} = require('./autoupdate.js');
 const cookies = require('./cookies.js');
 const {getClientCertificate} = require('./usercerts.js');
@@ -110,11 +111,14 @@ app.on('ready', () => {
   // Set up cookie IPC handlers.
   cookies.initHandlers();
 
-  // Launch the application.
-  createMainWindow();
+  // Initialize settings files for the application.
+  initAppSettings().then(() => {
+    // Launch the application.
+    createMainWindow();
 
-  // Initialize auto update.
-  initAutoUpdate(mainWindow);
+    // Initialize auto update.
+    initAutoUpdate(mainWindow);
+  });
 });
 
 app.on('select-client-certificate', (event, webContents, url, list, callback) => {
@@ -162,6 +166,11 @@ app.on('web-contents-created', (event, contents) => {
       event.preventDefault();
     }
   });
+});
+
+// Allow the renderer to determine if it's the main Electron window.
+ipcMain.handle('is-main-window', async (event) => {
+  return !!mainWindow && event.sender === mainWindow.webContents;
 });
 
 ipcMain.on('restart', (event, value) => {
