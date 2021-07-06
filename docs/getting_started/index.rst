@@ -8,7 +8,7 @@ Running Locally
 - Clone `opensphere-config-electron`_ to the workspace for Electron config overrides.
 - Run ``yarn install``.
 - Build OpenSphere.
-- From ``opensphere-electron``, run ``yarn start`` to launch the compiled app or ``yarn start --debug`` to launch the debug app.
+- From ``opensphere-electron``, run ``yarn start`` to launch the compiled app or ``yarn start --dev`` to launch the dev app.
 
 .. _OpenSphere: https://github.com/ngageoint/opensphere
 .. _Yarn workspace: https://github.com/ngageoint/opensphere-yarn-workspace

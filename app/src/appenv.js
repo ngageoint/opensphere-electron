@@ -14,7 +14,7 @@ const isDev = require('electron-is-dev');
  * If Electron is running the debug application.
  * @type {boolean}
  */
-const isDebug = isDev && process.argv.includes('--debug');
+const isDebug = isDev && process.argv.includes('--dev');
 
 
 /**
