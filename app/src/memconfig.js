@@ -1,5 +1,5 @@
 const fs = require('fs');
-const electron = require('electron');
+const {app, remote} = require('electron');
 const log = require('electron-log');
 const path = require('path');
 
@@ -11,7 +11,13 @@ const memoryConfigFileName = '.maxmemory';
 /**
  * The User's data directory.
  */
-const userDataPath = (electron.app || electron.remote.app).getPath('userData');
+let userDataPath = '';
+
+if (app) {
+  userDataPath = app.getPath('userData');
+} else if (remote && remote.app) {
+  userDataPath = remote.app.getPath('userData');
+}
 
 /**
  * The full path including filename to where the memory configuration file is located.
@@ -55,7 +61,7 @@ const getSystemMemory = () => {
 
 /**
  * Sets the maximum memory for the system.
- * @param {Number} maxMemory The maximum memory for the system in MB.
+ * @param {string} maxMemory The maximum memory for the system in MB.
  */
 const setMaximumMemory = (maxMemory) => {
   log.info('Changing applications maximum memory to ' + maxMemory + ' MB.');
@@ -63,4 +69,17 @@ const setMaximumMemory = (maxMemory) => {
   log.info('Memory configuration changed saved to ' + memoryConfigPath);
 };
 
-module.exports = {getMaximumMemory, getSystemMemory, setMaximumMemory};
+/**
+ * Set the maximum memory command line flags.
+ */
+const setMemoryFlags = () => {
+  const maxMemory = getMaximumMemory();
+  log.info('Setting applications maximum memory to ' + maxMemory + ' MB.');
+  if (app) {
+    app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + maxMemory);
+  } else if (remote && remote.app) {
+    remote.app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + maxMemory);
+  }
+};
+
+module.exports = {getMaximumMemory, getSystemMemory, setMaximumMemory, setMemoryFlags};

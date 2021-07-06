@@ -18,7 +18,12 @@ const getDefaultWebPreferences = () => ({
   //
   // https://www.electronjs.org/docs/tutorial/security#3-enable-context-isolation-for-remote-content
   //
-  contextIsolation: true
+  contextIsolation: true,
+
+  //
+  // Enable require('electron').remote in preload scripts.
+  //
+  enableRemoteModule: true
 });
 
 
