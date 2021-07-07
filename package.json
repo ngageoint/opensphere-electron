@@ -9,11 +9,11 @@
     "guide:auto": "sphinx-autobuild docs docs/_build/html",
     "lint": "eslint 'app/src/**/*.js'",
     "start": "electron .",
-    "create-installers": "electron-builder -mwl --x64",
-    "create-installer:linux": "electron-builder --linux --x64",
-    "create-installer:mac": "electron-builder --mac --x64",
-    "create-installer:win": "electron-builder --win --x64",
-    "postinstall": "electron-builder install-app-deps"
+    "create-installers": "npm run init-app-deps && electron-builder -mwl --x64",
+    "create-installer:linux": "npm run init-app-deps && electron-builder --linux --x64",
+    "create-installer:mac": "npm run init-app-deps && electron-builder --mac --x64",
+    "create-installer:win": "npm run init-app-deps && electron-builder --win --x64",
+    "init-app-deps": "cd app && npm i && electron-builder install-app-deps"
   },
   "repository": "https://github.com/ngageoint/opensphere-electron",
   "keywords": [
@@ -30,9 +30,11 @@
     "slash": "^3.0.0"
   },
   "devDependencies": {
-    "electron": "8.5.5",
-    "electron-builder": "22.9.1",
     "eslint": "^7.26.0",
     "eslint-config-google": "^0.14.0"
+  },
+  "peerDependencies": {
+    "electron": ">=8.5.5",
+    "electron-builder": ">=22.9.1"
   }
 }
