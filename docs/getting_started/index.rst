@@ -5,10 +5,10 @@ Running Locally
 ***************
 
 - Clone this repository alongside `OpenSphere`_ in a `Yarn workspace`_.
-- Clone `opensphere-config-electron`_ to the workspace for Electron config overrides.
+- Clone `opensphere-config-electron`_ to the workspace, which provides the Electron version and config overrides.
 - Run ``yarn install``.
 - Build OpenSphere.
-- From ``opensphere-electron``, run ``yarn start`` to launch the compiled app or ``yarn start --debug`` to launch the debug app.
+- From ``opensphere-electron``, run ``yarn start`` to launch the compiled app or ``yarn start --dev`` to launch the dev app.
 
 .. _OpenSphere: https://github.com/ngageoint/opensphere
 .. _Yarn workspace: https://github.com/ngageoint/opensphere-yarn-workspace
@@ -44,6 +44,13 @@ For more details on Electron Builder configuration options, see `the documentati
 
 .. _electron-builder.yml: https://github.com/ngageoint/opensphere-electron/blob/master/electron-builder.yml
 .. _the documentation: https://www.electron.build/configuration/configuration
+
+Electron Version
+----------------
+
+The minimum supported versions of the ``electron`` and ``electron-builder`` packages are defined in the ``peerDependencies`` of ``opensphere-electron/package.json``. The current recommended package versions are defined in ``opensphere-config-electron/package.json``.
+
+If you would like to use your own versions of these packages, either make local modifications in ``opensphere-config-electron`` or create your own fork of the project.
 
 Code Signing
 ------------

@@ -18,7 +18,7 @@ const {disposeAutoUpdate, initAutoUpdate} = require('./autoupdate.js');
 const cookies = require('./cookies.js');
 const {getClientCertificate} = require('./usercerts.js');
 const {getDefaultWebPreferences} = require('./prefs.js');
-const {getMaximumMemory} = require('./memconfig.js');
+const {setMemoryFlags} = require('./memconfig.js');
 const {relaunch} = require('./relauncher.js');
 
 // Configure logger.
@@ -84,9 +84,7 @@ const createMainWindow = () => {
   });
 };
 
-const maxMemory = getMaximumMemory();
-log.info('Setting applications maximum memory to ' + maxMemory + ' MB.');
-app.commandLine.appendSwitch('js-flags', '--max-old-space-size=' + maxMemory);
+setMemoryFlags();
 
 // Load additional appendSwitches from config.
 if (config.has('electron.appendSwitches')) {
