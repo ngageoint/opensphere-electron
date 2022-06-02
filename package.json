@@ -35,6 +35,6 @@
   },
   "peerDependencies": {
     "electron": ">=8.5.5",
-    "electron-builder": ">=22.9.1"
+    "electron-builder": ">=23.0.6"
   }
 }
