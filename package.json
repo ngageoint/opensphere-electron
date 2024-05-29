@@ -24,7 +24,6 @@
   "dependencies": {
     "bluebird": "^3.7.2",
     "config": "^3.3.3",
-    "dmg-license": "1.0.9", 
     "electron-is-dev": "3.0.1",
     "electron-log": "5.1.5",
     "electron-updater": "6.2.0",
