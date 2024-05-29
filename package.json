@@ -24,10 +24,10 @@
   "dependencies": {
     "bluebird": "^3.7.2",
     "config": "^3.3.3",
-    "electron-is-dev": "^1.2.0",
-    "electron-log": "^4.3.1",
-    "electron-updater": "^4.3.5",
-    "slash": "^3.0.0"
+    "electron-is-dev": "3.0.1",
+    "electron-log": "5.1.5",
+    "electron-updater": "6.2.0",
+    "slash": "5.1.0"
   },
   "devDependencies": {
     "eslint": "^8.0.1",
