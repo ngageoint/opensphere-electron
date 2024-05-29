@@ -34,7 +34,7 @@
     "eslint-config-google": "^0.14.0"
   },
   "peerDependencies": {
-    "electron": ">=8.5.5",
-    "electron-builder": "23.0.2"
+    "electron": "15.3.0",
+    "electron-builder": "24.13.3"
   }
 }
