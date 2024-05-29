@@ -35,6 +35,6 @@
   },
   "peerDependencies": {
     "electron": "15.3.0",
-    "electron-builder": "24.13.3"
+    "electron-builder": "20.28.4"
   }
 }
