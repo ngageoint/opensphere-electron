@@ -10,7 +10,7 @@
     "lint": "eslint 'app/src/**/*.js'",
     "start": "electron .",
     "create-installers": "npm run init-app-deps && electron-builder -mwl --x64",
-    "create-installer:linux": "npm run init-app-deps && electron-builder --linux --x64",
+    "create-installer:linux": "npm run init-app-deps && electron-builder --publish never --linux --x64",
     "create-installer:mac": "npm run init-app-deps && electron-builder --mac --x64",
     "create-installer:win": "npm run init-app-deps && electron-builder --win --x64",
     "init-app-deps": "cd app && npm i && electron-builder install-app-deps"
