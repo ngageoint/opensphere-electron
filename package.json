@@ -30,12 +30,14 @@
     "slash": "^3.0.0"
   },
   "devDependencies": {
-    "electron-builder": "23.6.0",
+    "electron": "^22.3.25",
+    "electron-builder": "^24.13.3",
+    "electron-builder-squirrel-windows": "^24.13.3",
     "eslint": "^8.57.0",
     "eslint-config-google": "^0.14.0"
   },
   "peerDependencies": {
-    "electron": "15.3.0",
-    "electron-builder": "23.6.0"
+    "electron": "22.3.25",
+    "electron-builder": "24.13.3"
   }
 }
